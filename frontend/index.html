@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Synapse</title>
+    <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div id="loader-wrapper">
+        <div class="loader"></div>
+    </div>
+    <main>
+        <div class="container">
+            <header class="main-header">
+                <hgroup>
+                    <h1>Gemini Synapse</h1>
+                    <p>API密钥管理面板</p>
+                </hgroup>
+                <button id="theme-toggle" class="outline">
+                    <img id="theme-icon" src="assets/black.svg" alt="Toggle theme">
+                </button>
+            </header>
+    
+            <nav class="tabs-container" style="display: flex; justify-content: center; align-items: center; margin-bottom: 1rem;">
+                <div class="tabs">
+                    <div class="tab-slider"></div>
+                    <button class="tab-btn active" data-view="monitor">监控</button>
+                    <button class="tab-btn" data-view="config">配置</button>
+                    <button class="tab-btn" data-view="logs">日志</button>
+                </div>
+            </nav>
+        </div>
+
+        <div id="login-view" class="hidden">
+            <article id="login-card">
+                <hgroup style="text-align: center; margin-bottom: 2rem;">
+                    <h1 style="font-size: 1.75rem; color: var(--pico-primary); margin-bottom: 0.5rem;">Gemini Synapse</h1>
+                    <p>管理员登录</p>
+                </hgroup>
+                <form id="auth-form">
+                    <input type="password" id="admin-key-input" placeholder="管理员密钥" required autocomplete="current-password">
+                    <button type="submit" class="contrast" id="login-button">登录</button>
+                </form>
+                <p id="login-error" style="color: var(--pico-form-element-invalid-border-color); display: none; margin-top: 1rem;"></p>
+            </article>
+        </div>
+
+        <section id="main-content" style="overflow: hidden;">
+            <div id="view-container">
+                <div id="monitor-view" class="view-content">
+                    <!-- Key Stats Cards -->
+                    <div class="custom-card">
+                    <div class="card-header">
+                        <h5>密钥统计</h5>
+                        <span class="total-count" id="key-total-count">总计: 0</span>
+                    </div>
+                    <div class="card-content">
+                        <div class="stats-grid" id="key-stats-grid">
+                            <div class="stat-item"><h3 id="total-keys">0</h3><p>总密钥数</p></div>
+                            <div class="stat-item"><h3 id="valid-keys">0</h3><p>有效密钥</p></div>
+                            <div class="stat-item"><h3 id="invalid-keys">0</h3><p>无效密钥</p></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="custom-card">
+                    <div class="card-header">
+                        <h5>API调用统计</h5>
+                        <span class="total-count" id="api-total-count">本月: 0</span>
+                    </div>
+                    <div class="card-content">
+                        <div class="stats-grid" id="call-stats-grid">
+                            <div class="stat-item"><h3 id="calls-1m">0</h3><p>1分钟调用</p></div>
+                            <div class="stat-item"><h3 id="calls-1h">0</h3><p>1小时调用</p></div>
+                            <div class="stat-item"><h3 id="calls-24h">0</h3><p>24小时调用</p></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="custom-card" id="api-trend-card">
+                    <div class="card-header">
+                        <h5>模型调用统计图</h5>
+                        <div class="chart-time-range-selector">
+                            <a href="#" class="active" data-range="1d">1天</a>
+                            <a href="#" data-range="7d">7天</a>
+                            <a href="#" data-range="30d">30天</a>
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        <canvas id="api-trend-chart"></canvas>
+                    </div>
+                </div>
+                    <!-- Key Lists -->
+                <article id="valid-keys-container">
+                    <header style="display: flex; justify-content: space-between; align-items: center;">
+                        <span id="valid-keys-title">有效密钥列表</span>
+                        <button class="outline" data-action="validate-all-list" data-list="valid" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; line-height: 1; border-radius: var(--pico-border-radius); margin-bottom: 0;">全部验证</button>
+                    </header>
+                    <div class="overflow-auto">
+                        <table>
+                            <thead><tr>
+                                <th><input type="checkbox" data-action="select-all" data-list="valid"></th>
+                                <th>密钥</th>
+                                <th>
+                                    <div class="pagination-size-control">
+                                        <span>每页</span>
+                                        <select class="page-size-selector" data-list="valid">
+                                            <option value="10">10</option>
+                                            <option value="20">20</option>
+                                            <option value="50">50</option>
+                                            <option value="100">100</option>
+                                            <option value="500">500</option>
+                                        </select>
+                                        <span>项</span>
+                                    </div>
+                                </th>
+                            </tr></thead>
+                            <tbody id="valid-keys-tbody"></tbody>
+                        </table>
+                    </div>
+                    <footer id="valid-keys-pagination" class="pagination"></footer>
+                </article>
+                <article id="invalid-keys-container">
+                    <header style="display: flex; justify-content: space-between; align-items: center;">
+                        <span id="invalid-keys-title">无效密钥列表</span>
+                        <button class="outline" data-action="validate-all-list" data-list="invalid" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; line-height: 1; border-radius: var(--pico-border-radius); margin-bottom: 0;">全部验证</button>
+                    </header>
+                    <div class="overflow-auto">
+                        <table>
+                            <thead><tr>
+                                <th><input type="checkbox" data-action="select-all" data-list="invalid"></th>
+                                <th>密钥</th>
+                                <th>
+                                    <div class="pagination-size-control">
+                                        <span>每页</span>
+                                        <select class="page-size-selector" data-list="invalid">
+                                            <option value="10">10</option>
+                                            <option value="20">20</option>
+                                            <option value="50">50</option>
+                                            <option value="100">100</option>
+                                            <option value="500">500</option>
+                                        </select>
+                                        <span>项</span>
+                                    </div>
+                                </th>
+                            </tr></thead>
+                            <tbody id="invalid-keys-tbody"></tbody>
+                        </table>
+                    </div>
+                    <footer id="invalid-keys-pagination" class="pagination"></footer>
+                </article>
+                </div>
+                <div id="config-view" class="view-content">
+                    <article>
+                        <header>Gemini API密钥</header>
+                        <form id="add-key-form">
+                            <textarea id="new-key-input" placeholder="输入Gemini API密钥，每行一个或用英文逗号分隔" required rows="4"></textarea>
+                            <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                                <button type="button" id="batch-delete-keys-btn" class="secondary" style="flex: 1; padding: 0.5rem 0;">批量删除</button>
+                                <button type="submit" style="flex: 1; padding: 0.5rem 0;">批量添加</button>
+                            </div>
+                        </form>
+                    </article>
+                    <article>
+                        <header>允许访问的密钥</header>
+                        <div id="access-keys-list" style="margin-bottom: 1rem;"></div>
+                        <form id="add-access-key-form" style="display: flex; flex-direction: column; gap: 1rem;">
+                            <input type="text" id="new-access-key-input" placeholder="输入新的访问密钥" style="flex-grow: 1; margin-bottom: 0; padding: 0.5rem 0.75rem;">
+                            <button type="submit" style="white-space: nowrap; padding: 0.5rem 1rem; align-self: flex-end;">添加密钥</button>
+                        </form>
+                    </article>
+                    <article>
+                        <header>管理员密钥</header>
+                        <form id="admin-key-form">
+                            <input type="password" id="admin-key-input-config" placeholder="输入新的管理员密钥">
+                            <button type="submit" style="padding: 0.5rem 1rem;">修改密钥</button>
+                        </form>
+                    </article>
+                    <article>
+                        <header>API基础配置</header>
+                        <form id="api-config-form">
+                            <label for="api-base-url">Gemini上游URL</label>
+                            <input type="text" id="api-base-url" name="api_base_url" placeholder="https://generativelanguage.googleapis.com/v1beta">
+                            
+                            <label for="max-failure-count">最大失败次数</label>
+                            <input type="number" id="max-failure-count" name="max_failure_count" min="1" max="20" value="5">
+                            
+                            <label for="max-retry-count">最大重试次数</label>
+                            <input type="number" id="max-retry-count" name="max_retry_count" min="1" max="10" value="3">
+                            
+                            <button type="submit" style="padding: 0.5rem 1rem;">保存配置</button>
+                        </form>
+                    </article>
+                    <article id="scheduler-card">
+                        <header>定时任务</header>
+                        <form id="scheduler-form">
+                            <label for="validation-model">模型预设 (全局)</label>
+                            <select id="validation-model" name="validation_model" required>
+                                <option value="" disabled selected>加载中...</option>
+                            </select>
+
+                            <label for="validation-interval">检查间隔 (小时)</label>
+                            <input type="number" id="validation-interval" name="validation_interval" min="1" value="1">
+
+                            <label for="scheduler-timezone">时区</label>
+                            <select id="scheduler-timezone" name="scheduler_timezone">
+                                <!-- Options will be populated by JS -->
+                            </select>
+
+                            <label for="error-log-retention">自动删除几天前的错误日志</label>
+                            <input type="number" id="error-log-retention" name="error_log_retention" min="1" value="7">
+
+                            <label for="request-log-retention">自动删除几天前的请求日志（影响图表统计）</label>
+                            <input type="number" id="request-log-retention" name="request_log_retention" min="1" value="7">
+                            
+                            <button type="submit" style="padding: 0.5rem 1rem;">保存并应用</button>
+                        </form>
+                    </article>
+                </div>
+                <div id="logs-view" class="view-content">
+                    <article>
+                        <header style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>错误日志</span>
+                            <button id="clear-logs-btn" class="outline" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; line-height: 1; border-radius: var(--pico-border-radius); margin-bottom: 0;">清除日志</button>
+                        </header>
+
+                        <div class="overflow-auto">
+                            <table style="font-size: 0.7rem;">
+                                <thead>
+                                    <tr>
+                                        <th>Gemini密钥</th>
+                                        <th>模型名称</th>
+                                        <th>错误码</th>
+                                        <th>请求时间</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="error-logs-tbody">
+                                    <tr><td colspan="4" style="text-align: center;">加载中...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <footer id="error-logs-pagination" class="pagination"></footer>
+                    </article>
+                </div>
+            </div>
+        </section>
+        
+        <p id="error-message" style="color: var(--pico-color-red-500); text-align: center;"></p>
+    </main>
+
+    <div id="floating-bar">
+        <span class="selection-text">已选择 <strong>0</strong> 项</span>
+        <div class="buttons">
+            <button style="background-color: var(--btn-green);" data-action="batch-validate">验证</button>
+            <button style="background-color: var(--btn-gray);" data-action="batch-reset">重置</button>
+            <button style="background-color: var(--btn-blue);" data-action="batch-copy">复制</button>
+            <button style="background-color: var(--btn-red);" data-action="batch-delete">删除</button>
+        </div>
+    </div>
+
+    <!-- Details Modal -->
+    <dialog id="details-modal">
+        <article>
+            <header>
+                <a href="#close" aria-label="Close" class="close"></a>
+                密钥 <strong id="modal-key-partial"></strong> 最近(24H)请求详情
+            </header>
+            <div id="modal-content">
+                <div class="modal-loading" aria-busy="true">正在加载...</div>
+                <div id="modal-data-display" style="display: none;"></div>
+            </div>
+        </article>
+    </dialog>
+
+    <!-- Validation Progress Modal -->
+    <dialog id="validation-modal">
+        <article style="max-width: 320px; text-align: center; padding-top: 1.5rem; padding-bottom: 1.5rem;">
+            <h5 style="margin-bottom: 1.5rem;">正在验证密钥...</h5>
+            <div aria-busy="true"></div>
+        </article>
+    </dialog>
+
+    <!-- Generic Modal for Confirmations and Notifications -->
+    <dialog id="generic-modal">
+        <article style="max-width: 420px;">
+            <header>
+                <h5 id="generic-modal-title" style="margin-bottom: 0;"></h5>
+            </header>
+            <p id="generic-modal-body" style="margin-top: 1rem;"></p>
+            <footer id="generic-modal-footer" style="display: flex; justify-content: flex-end; gap: 0.5rem;">
+                <!-- Buttons will be injected here by JavaScript -->
+            </footer>
+        </article>
+    </dialog>
+
+    <script src="script.js"></script>
+</body>
+</html>

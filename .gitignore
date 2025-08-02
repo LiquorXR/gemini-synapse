@@ -1,0 +1,24 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# Dependencies
+# Production
+/build
+
+# Misc
+.DS_Store
+*.pem
+
+# Editor directories and files
+.vscode*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.sublime-workspace
+
+# Python
+__pycache__/
+*.pyc
+.env
+venv/
+data.db
