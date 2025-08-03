@@ -6,8 +6,6 @@
 
 **Gemini Synapse** 是一个为 Google Gemini 原生 API 设计的下一代轻量级代理服务。它不仅提供了稳定、高效的 API 请求中转，还引入了强大的 Web 管理面板和一系列高级功能，旨在为开发者提供极致的便利和控制。
 
-![Web UI](httpshttps://user-images.githubusercontent.com/13223253/287421687-70573635-23a3-475a-b7a7-3d2b256e6b12.png)
-
 ## ✨ 核心功能
 
 -   **高性能 API 代理**: 在无法直连 Google API 的网络环境中，提供稳定、高效的请求中转服务。
@@ -108,6 +106,60 @@
 -   **API 密钥**: 填入你在 `.env` 或 Web 面板中设置的 `ACCESS_KEY` 之一。
 
 请求将自动通过代理转发至 Gemini API，并享受密钥负载均衡、失败重试等所有高级功能。
+
+## 🌐 公网访问 (内网穿透)
+
+如果你的服务部署在没有公网 IP 的设备上（例如家庭网络、办公室或 Termux 环境），你可以使用内网穿透工具将其安全地暴露到公网上。这里我们推荐使用 **Cloudflare Tunnel**，因为它完全免费、稳定，并且能自动为你配置 HTTPS。
+
+### 使用 Cloudflare Tunnel (推荐)
+
+**注意**: 在某些较旧的 Android 内核上，Termux 用户运行 `cloudflared tunnel login` 可能会遇到 `SIGSYS: bad system call` 错误。这是因为 `cloudflared` 尝试调用一个当前系统不支持的系统调用来打开浏览器。下面的 **Token 认证方法** 可以完美绕过此问题，是官方推荐的服务器和 Termux 环境部署方式。
+
+#### 步骤 1: 下载 `cloudflared` 客户端
+
+在你的服务器或 Termux 环境中，根据你的系统架构下载对应的 `cloudflared` 客户端。
+
+*   **对于 Linux (x86_64):**
+    ```bash
+    curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
+    ```
+*   **对于 Linux (ARM64, 例如 Termux):**
+    ```bash
+    curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64 -o cloudflared
+    ```
+
+下载后，赋予其执行权限：
+```bash
+chmod +x cloudflared
+```
+
+#### 步骤 2: 在 Cloudflare 控制台创建隧道并获取 Token
+
+1.  在你的**电脑或手机浏览器**上，访问 [Cloudflare Zero Trust 控制台](https://one.dash.cloudflare.com/) 并登录。
+2.  在左侧边栏，找到并点击 **Access** -> **Tunnels**。
+3.  点击 **Create a tunnel** 按钮。
+4.  选择 **Cloudflared** 作为连接器类型，点击 **Next**。
+5.  **为你的隧道命名** (例如 `gemini-termux`)，然后点击 **Save tunnel**。
+6.  在下一个页面，你会看到不同操作系统的安装指令。**请忽略这些指令**，我们只需要页面上显示的 **Token**。它是一长串字符，请**复制**它。
+
+#### 步骤 3: 在 Termux 或服务器上运行隧道
+
+回到你的 Termux/服务器，执行以下命令。请将 `<Your-Token-Here>` 替换为您刚刚从 Cloudflare 网站复制的真实 Token。
+
+```bash
+./cloudflared tunnel --no-autoupdate run --token <Your-Token-Here>
+```
+此时，你的设备和 Cloudflare 之间已经建立了安全的连接。
+
+#### 步骤 4: 配置公网域名并指向本地服务
+
+1.  回到浏览器中的 Cloudflare Tunnels 控制台。你应该能看到刚刚创建的隧道状态为 **"Connected"**。
+2.  点击你的隧道名称，然后切换到 **Public Hostname** 标签页。
+3.  点击 **Add a public hostname**。
+4.  在 **Service** 部分，将 **Type** 设置为 `HTTP`，并将 **URL** 设置为 `localhost:8000` (这是 Gemini Synapse 服务的地址)。
+5.  点击 **Save hostname**。
+
+完成！Cloudflare 会自动为你分配一个 `.trycloudflare.com` 的域名（或使用你自己的域名），并将其指向你在本地运行的服务。现在，你可以通过这个公网地址访问你的应用了。为了让它在后台稳定运行，建议配合 `tmux` 或 `screen` 等工具使用。
 
 ## 🤝 贡献
 

@@ -105,8 +105,7 @@ async def cleanup_all_sessions():
 
 # --- 调度器设置与控制 ---
 scheduler = None
-# 在单进程模式下，我们不需要文件锁来进行领导者选举。
-# 主进程自动成为领导者。
+# 在单进程模式下，主进程自动成为领导者。
 
 def _is_process_leader():
     """在单进程模式下，当前进程始终是领导者。"""
@@ -135,13 +134,17 @@ async def setup_scheduler():
         "interval",
         hours=interval_hours,
         id="scheduled_key_validation_job",
+        misfire_grace_time=None,
+        coalesce=True,
     )
     sch.add_job(
         cleanup_error_logs,
         "cron",
-        hour=3, 
+        hour=3,
         minute=0,
         id="cleanup_error_logs_job",
+        misfire_grace_time=None,
+        coalesce=True,
     )
     sch.add_job(
         cleanup_request_logs,
@@ -149,14 +152,20 @@ async def setup_scheduler():
         hour=3,
         minute=5,
         id="cleanup_request_logs_job",
+        misfire_grace_time=None,
+        coalesce=True,
     )
     sch.add_job(
         cleanup_all_sessions,
         "interval",
         minutes=60,
         id="cleanup_all_sessions_job",
+        misfire_grace_time=None,
+        coalesce=True,
     )
-    logger.info("Scheduler jobs configured.")
+    logger.info(
+        "Scheduler jobs configured with misfire_grace_time=None and coalesce=True."
+    )
 
 
 async def start_scheduler():

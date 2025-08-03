@@ -6,8 +6,6 @@
 
 **Gemini Synapse** is a next-generation lightweight proxy service designed for the native Google Gemini API. It not only provides stable and efficient API request forwarding but also introduces a powerful web admin panel and a suite of advanced features, aiming to offer developers the ultimate convenience and control.
 
-![Web UI](https://user-images.githubusercontent.com/13223253/287421687-70573635-23a3-475a-b7a7-3d2b256e6b12.png)
-
 ## ✨ Core Features
 
 -   **High-Performance API Proxy**: Provides stable and efficient request forwarding services in network environments where direct connection to the Google API is not possible.
@@ -45,8 +43,8 @@
     ```
 
 3.  **Access the Service**:
-    -   The API proxy service runs at: `http://localhost:8000`
-    -   The Web Admin Panel is at: `http://localhost:8000` (access the root path)
+    -   The API proxy service runs at: `http://127.0.0.1:8000`
+    -   The Web Admin Panel is at: `http://127.0.0.1:8000` (access the root path)
 
 ### Option 2: Traditional Manual Deployment
 
@@ -108,6 +106,60 @@ Configure your third-party clients or applications to use this proxy service:
 -   **API Key**: Use one of the `ACCESS_KEY`s you set in the `.env` file or the web panel.
 
 Requests will be automatically forwarded to the Gemini API through the proxy, enjoying all advanced features like key load balancing, failure retries, and more.
+
+## 🌐 Public Access (NAT Traversal)
+
+If your service is deployed on a device without a public IP address (e.g., a home network, office, or Termux environment), you can use a NAT traversal tool to securely expose it to the internet. We recommend using **Cloudflare Tunnel** because it is completely free, stable, and automatically configures HTTPS for you.
+
+### Using Cloudflare Tunnel (Recommended)
+
+**Note**: Termux users on some older Android kernels might encounter a `SIGSYS: bad system call` error when running `cloudflared tunnel login`. This happens because `cloudflared` attempts a system call to open a browser, which the underlying system may not support. The **Token Authentication Method** below bypasses this issue entirely and is the officially recommended way for server and Termux environments.
+
+#### Step 1: Download the `cloudflared` Client
+
+In your server or Termux environment, download the appropriate `cloudflared` client for your system architecture.
+
+*   **For Linux (x86_64):**
+    ```bash
+    curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
+    ```
+*   **For Linux (ARM64, e.g., Termux):**
+    ```bash
+    curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64 -o cloudflared
+    ```
+
+After downloading, grant it execute permissions:
+```bash
+chmod +x cloudflared
+```
+
+#### Step 2: Create a Tunnel and Get a Token from the Cloudflare Dashboard
+
+1.  On your **PC or phone's browser**, go to the [Cloudflare Zero Trust Dashboard](https://one.dash.cloudflare.com/) and log in.
+2.  In the left sidebar, navigate to **Access** -> **Tunnels**.
+3.  Click **Create a tunnel**.
+4.  Choose **Cloudflared** as your connector type and click **Next**.
+5.  **Give your tunnel a name** (e.g., `gemini-termux`) and click **Save tunnel**.
+6.  On the next page, you will see installation instructions for various OSes. **Ignore these** and look for the **Token**. It's a long string of characters. **Copy** it.
+
+#### Step 3: Run the Tunnel on Your Termux or Server
+
+Back in your Termux/server, execute the following command. Replace `<Your-Token-Here>` with the actual token you just copied from the Cloudflare website.
+
+```bash
+./cloudflared tunnel --no-autoupdate run --token <Your-Token-Here>
+```
+At this point, a secure connection between your device and Cloudflare has been established.
+
+#### Step 4: Configure a Public Hostname to Point to Your Local Service
+
+1.  Go back to the Cloudflare Tunnels dashboard in your browser. You should see your newly created tunnel with a **"Connected"** status.
+2.  Click on your tunnel's name, then switch to the **Public Hostname** tab.
+3.  Click **Add a public hostname**.
+4.  In the **Service** section, set the **Type** to `HTTP` and the **URL** to `localhost:8000` (the address of your Gemini Synapse service).
+5.  Click **Save hostname**.
+
+Done! Cloudflare will automatically assign you a `.trycloudflare.com` domain (or you can use your own) and point it to your locally running service. You can now access your application via this public address. For stable background operation, it is recommended to use it with tools like `tmux` or `screen`.
 
 ## 🤝 Contributing
 
