@@ -1,12 +1,9 @@
 # Stage 1: Build stage
 # Use an official Python runtime as a parent image
-FROM python:3.9-slim as builder
+FROM python:3.10-slim as builder
 
 # Set the working directory in the container
 WORKDIR /app
-
-# Install build dependencies if any (e.g., for compiling some packages)
-# For this project, it seems no special build dependencies are needed.
 
 # Copy the requirements file into the container at /app
 COPY requirements.txt .
@@ -21,20 +18,24 @@ COPY . .
 
 # Stage 2: Final stage
 # Use a smaller, more secure base image for the final application
-FROM python:3.9-slim
+FROM python:3.10-slim
 
 # Set the working directory
 WORKDIR /app
 
 # Copy installed packages from the builder stage
-COPY --from=builder /usr/local/lib/python3.9/site-packages/ /usr/local/lib/python3.9/site-packages/
+COPY --from=builder /usr/local/lib/python3.10/site-packages/ /usr/local/lib/python3.10/site-packages/
+
+# <<< 这是新增加的关键一行 >>>
+# Copy executables installed by pip from the builder stage
+COPY --from=builder /usr/local/bin/ /usr/local/bin/
 
 # Copy the application code from the builder stage
 COPY --from=builder /app/ .
 
 # Expose the port the app runs on
-EXPOSE 8000
+EXPOSE 8001
 
 # Define the command to run the application
 # The host 0.0.0.0 makes the container accessible from outside
-CMD ["uvicorn", "api.index:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "api.index:app", "--host", "0.0.0.0", "--port", "8001"]
