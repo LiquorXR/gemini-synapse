@@ -194,7 +194,3 @@ At this point, a secure connection between your device and Cloudflare has been e
 5.  Click **Save hostname**.
 
 Done! Cloudflare will automatically assign you a `.trycloudflare.com` domain (or you can use your own) and point it to your locally running service. You can now access your application via this public address. For stable background operation, it is recommended to use it with tools like `tmux` or `screen`.
-
-## 🤝 Contributing
-
-Contributions of all kinds are welcome! If you have any ideas, suggestions, or find a bug, please feel free to submit [Issues](https://github.com/LiquorXR/gemini-synapse/issues) or [Pull Requests](https://github.com/LiquorXR/gemini-synapse/pulls).
