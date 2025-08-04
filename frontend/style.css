@@ -43,6 +43,10 @@ html, body {
 main {
     padding-top: 2rem;
     padding-bottom: 1rem;
+    max-width: 1000px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
 }
 .main-header {
     position: relative;

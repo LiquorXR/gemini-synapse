@@ -363,7 +363,7 @@ async def get_stats_trend_internal(days: int) -> TrendData:
 
 @router.get("/stats/trend", response_model=TrendData)
 async def get_stats_trend(range: str = "7d"):
-    """获取 API 模型调用统计图数据"""
+    """获取 API 模型调用趋势图数据"""
     if range == "1d":
         days = 1
     elif range == "30d":
