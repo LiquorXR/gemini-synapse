@@ -120,31 +120,6 @@ function setupSwipeNavigation() {
     }
 }
 
-function setupThemeToggle() {
-    const themeToggle = document.getElementById('theme-toggle');
-    const themeIcon = document.getElementById('theme-icon');
-    const doc = document.documentElement;
-    const lightIcon = 'assets/black.svg';
-    const darkIcon = 'assets/white.svg';
-
-    function applyTheme(theme) {
-        doc.setAttribute('data-theme', theme);
-        themeIcon.src = theme === 'dark' ? darkIcon : lightIcon;
-        localStorage.setItem('theme', theme);
-    }
-
-    themeToggle.addEventListener('click', () => {
-        const currentTheme = doc.getAttribute('data-theme');
-        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        applyTheme(newTheme);
-    });
-
-    // Initial theme setup
-    const savedTheme = localStorage.getItem('theme');
-    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const initialTheme = savedTheme || (prefersDark ? 'dark' : 'light');
-    applyTheme(initialTheme);
-}
 
 document.addEventListener('DOMContentLoaded', () => {
     const debug = false;
@@ -204,6 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
         error_logs: { currentPage: 1, pageSize: 50 },
     };
     let apiTrendChart = null;
+    let lastTrendData = null;
 
     function apiHeaders() { return { 'Content-Type': 'application/json' }; }
     
@@ -614,6 +590,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.body.removeChild(textArea);
                 }
                 showModal({ title: '复制成功', body: `已复制 ${selectedIds.length} 个密钥到剪贴板。`, confirmText: '好的' });
+                unselectAll();
             } catch (err) {
                 log('复制到剪贴板失败:', err);
                 showError('复制失败，请检查浏览器权限或手动复制。');
@@ -1012,6 +989,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(`/admin/stats/trend?range=${range}`);
             if (!response.ok) throw new Error('获取趋势数据失败');
             const trendData = await response.json();
+            lastTrendData = trendData;
             renderApiTrendChart(trendData);
         } catch (err) {
             showError(err.message);
@@ -1114,12 +1092,9 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         if (apiTrendChart) {
-            apiTrendChart.data.labels = trendData.labels;
-            apiTrendChart.data.datasets = datasets;
-            apiTrendChart.update();
-        } else {
-            apiTrendChart = new Chart(ctx, chartConfig);
+            apiTrendChart.destroy();
         }
+        apiTrendChart = new Chart(ctx, chartConfig);
     }
 
     async function clearAllErrorLogs() {
@@ -1516,6 +1491,35 @@ document.addEventListener('DOMContentLoaded', () => {
     checkAuth();
     setupInputButtonStates();
     setupApiConfigFormListener();
+    function setupThemeToggle() {
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeIcon = document.getElementById('theme-icon');
+        const doc = document.documentElement;
+        const lightIcon = 'assets/black.svg';
+        const darkIcon = 'assets/white.svg';
+
+        function applyTheme(theme) {
+            doc.setAttribute('data-theme', theme);
+            themeIcon.src = theme === 'dark' ? darkIcon : lightIcon;
+            localStorage.setItem('theme', theme);
+            if (apiTrendChart && lastTrendData) {
+                renderApiTrendChart(lastTrendData);
+            }
+        }
+
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = doc.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            applyTheme(newTheme);
+        });
+
+        // Initial theme setup
+        const savedTheme = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const initialTheme = savedTheme || (prefersDark ? 'dark' : 'light');
+        applyTheme(initialTheme);
+    }
+
     setupThemeToggle();
 
     document.querySelector('.chart-time-range-selector').addEventListener('click', async (e) => {
