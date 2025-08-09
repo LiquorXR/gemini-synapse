@@ -195,6 +195,12 @@ select:focus {
 #view-container {
     display: flex;
     transition: transform 0.3s ease-in-out;
+    /* Height will be controlled by JS to match active .view-content */
+    height: auto;
+    transition-property: transform, height;
+    transition-duration: 0.3s, 0.3s;
+    transition-timing-function: ease-in-out, ease-in-out;
+    align-items: flex-start; /* prevent children from stretching to container height */
 }
 .view-content {
     width: 100%;

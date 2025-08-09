@@ -26,8 +26,37 @@ class ConfigManager:
         if hasattr(self, '_initialized') and self._initialized:
             return
         self.db_url = db_url
+        # 批量更新深度与调度器重启防抖任务
+        self._bulk_depth = 0
+        self._debounce_task: asyncio.Task | None = None
         self._initialized = True
         logging.info("ConfigManager initialized.")
+
+    def begin_bulk_update(self):
+        """开始批量更新：抑制期间的调度器重启。"""
+        self._bulk_depth += 1
+
+    async def end_bulk_update(self, restart: bool = False):
+        """结束批量更新：需要时仅重启一次调度器。"""
+        self._bulk_depth = max(0, self._bulk_depth - 1)
+        if restart and self._bulk_depth == 0:
+            from api.scheduler import restart_scheduler
+            asyncio.create_task(restart_scheduler())
+
+    def _schedule_debounced_restart(self, delay: float = 0.5):
+        """在短时间内合并多次重启请求，仅重启一次。"""
+        if self._debounce_task and not self._debounce_task.done():
+            self._debounce_task.cancel()
+
+        async def _debounced():
+            try:
+                await asyncio.sleep(delay)
+                from api.scheduler import restart_scheduler
+                await restart_scheduler()
+            except asyncio.CancelledError:
+                pass
+
+        self._debounce_task = asyncio.create_task(_debounced())
 
     async def get_config(self, key: str) -> str | None:
         """从数据库获取一个配置项的值"""
@@ -55,9 +84,11 @@ class ConfigManager:
             "REQUEST_LOG_RETENTION_DAYS"
         ]
         if key in scheduler_keys:
-            from api.scheduler import restart_scheduler
-            logging.info(f"Scheduler-related config '{key}' changed. Triggering scheduler restart.")
-            asyncio.create_task(restart_scheduler())
+            if self._bulk_depth > 0:
+                # 批量更新模式下，不在每次 set 时重启
+                return
+            logging.info(f"Scheduler-related config '{key}' changed. Debouncing scheduler restart.")
+            self._schedule_debounced_restart(delay=0.5)
 
 class KeyManager:
     """
@@ -81,7 +112,6 @@ class KeyManager:
         self.pool_size = pool_size
         
         self.key_queue = deque()
-        # 使用 FileLock 实现跨进程锁
         # 在单进程模式下，使用内存锁 (asyncio.Lock) 以获得最佳性能
         self.refill_lock = asyncio.Lock()
         # 添加一个专用的数据库写操作锁，以防止并发写入导致的 "database is locked" 错误
@@ -186,8 +216,7 @@ class KeyManager:
         """
         import datetime
         max_failure_count_str = await config_manager.get_config("MAX_FAILURE_COUNT")
-        # Fallback to the value from config file if not in DB
-        max_failure_count = int(max_failure_count_str) if max_failure_count_str else MAX_FAILURE_COUNT
+        max_failure_count = int(max_failure_count_str)
 
         # If model_name is not provided, try to get it from config
         if not model_name:
@@ -350,72 +379,79 @@ async def initialize_database():
         await db.execute("CREATE INDEX IF NOT EXISTS idx_api_keys_validation ON api_keys (is_valid, last_used)")
         await db.commit()
 
-    # 检查并植入 ACCESS_KEY
-    access_key_in_db = await config_manager.get_config("ACCESS_KEY")
-    if not access_key_in_db:
-        logging.info("ACCESS_KEY not found in DB, seeding from environment.")
-        if not ACCESS_KEY:
-            raise ValueError("Cannot seed ACCESS_KEY: not found in environment.")
-        # 将密钥列表转换为逗号分隔的字符串以便存储
-        access_key_str = ",".join(ACCESS_KEY)
-        await config_manager.set_config("ACCESS_KEY", access_key_str)
+    # 在初始化期间，批量植入配置，避免多次重启调度器
+    config_manager.begin_bulk_update()
+    try:
+        # 检查并植入 ACCESS_KEY
+        access_key_in_db = await config_manager.get_config("ACCESS_KEY")
+        if not access_key_in_db:
+            logging.info("ACCESS_KEY not found in DB, seeding from environment.")
+            if not ACCESS_KEY:
+                raise ValueError("Cannot seed ACCESS_KEY: not found in environment.")
+            # 将密钥列表转换为逗号分隔的字符串以便存储
+            access_key_str = ",".join(ACCESS_KEY)
+            await config_manager.set_config("ACCESS_KEY", access_key_str)
 
-    # 检查并植入 ADMIN_KEY
-    admin_key_in_db = await config_manager.get_config("ADMIN_KEY")
-    if not admin_key_in_db:
-        logging.info("ADMIN_KEY not found in DB, seeding from environment.")
-        if not ADMIN_KEY:
-            raise ValueError("Cannot seed ADMIN_KEY: not found in environment.")
-        await config_manager.set_config("ADMIN_KEY", ADMIN_KEY)
+        # 检查并植入 ADMIN_KEY
+        admin_key_in_db = await config_manager.get_config("ADMIN_KEY")
+        if not admin_key_in_db:
+            logging.info("ADMIN_KEY not found in DB, seeding from environment.")
+            if not ADMIN_KEY:
+                raise ValueError("Cannot seed ADMIN_KEY: not found in environment.")
+            await config_manager.set_config("ADMIN_KEY", ADMIN_KEY)
 
-    # 检查并植入 MAX_FAILURE_COUNT
-    max_failure_count_in_db = await config_manager.get_config("MAX_FAILURE_COUNT")
-    if not max_failure_count_in_db:
-        logging.info("MAX_FAILURE_COUNT not found in DB, seeding from config file.")
-        await config_manager.set_config("MAX_FAILURE_COUNT", str(MAX_FAILURE_COUNT))
+        # 检查并植入 MAX_FAILURE_COUNT
+        max_failure_count_in_db = await config_manager.get_config("MAX_FAILURE_COUNT")
+        if not max_failure_count_in_db:
+            logging.info("MAX_FAILURE_COUNT not found in DB, seeding from config file.")
+            await config_manager.set_config("MAX_FAILURE_COUNT", str(MAX_FAILURE_COUNT))
 
-    # 检查并植入 MAX_RETRY_COUNT
-    max_retry_count_in_db = await config_manager.get_config("MAX_RETRY_COUNT")
-    if not max_retry_count_in_db:
-        logging.info("MAX_RETRY_COUNT not found in DB, seeding from config file.")
-        await config_manager.set_config("MAX_RETRY_COUNT", str(MAX_RETRY_COUNT))
+        # 检查并植入 MAX_RETRY_COUNT
+        max_retry_count_in_db = await config_manager.get_config("MAX_RETRY_COUNT")
+        if not max_retry_count_in_db:
+            logging.info("MAX_RETRY_COUNT not found in DB, seeding from config file.")
+            await config_manager.set_config("MAX_RETRY_COUNT", str(MAX_RETRY_COUNT))
 
-    # 检查并植入 GEMINI_API_BASE_URL
-    api_base_url_in_db = await config_manager.get_config("GEMINI_API_BASE_URL")
-    if not api_base_url_in_db:
-        logging.info("GEMINI_API_BASE_URL not found in DB, seeding from config file.")
-        await config_manager.set_config("GEMINI_API_BASE_URL", GEMINI_API_BASE_URL)
+        # 检查并植入 GEMINI_API_BASE_URL
+        api_base_url_in_db = await config_manager.get_config("GEMINI_API_BASE_URL")
+        if not api_base_url_in_db:
+            logging.info("GEMINI_API_BASE_URL not found in DB, seeding from config file.")
+            await config_manager.set_config("GEMINI_API_BASE_URL", GEMINI_API_BASE_URL)
 
-    # --- 植入定时任务相关的配置 ---
-    # VALIDATION_MODEL
-    validation_model_in_db = await config_manager.get_config("VALIDATION_MODEL")
-    if not validation_model_in_db:
-        logging.info("VALIDATION_MODEL not found in DB, seeding from config file.")
-        await config_manager.set_config("VALIDATION_MODEL", VALIDATION_MODEL)
+        # --- 植入定时任务相关的配置 ---
+        # VALIDATION_MODEL
+        validation_model_in_db = await config_manager.get_config("VALIDATION_MODEL")
+        if not validation_model_in_db:
+            logging.info("VALIDATION_MODEL not found in DB, seeding from config file.")
+            await config_manager.set_config("VALIDATION_MODEL", VALIDATION_MODEL)
 
-    # KEY_VALIDATION_INTERVAL_HOURS
-    key_validation_interval_in_db = await config_manager.get_config("KEY_VALIDATION_INTERVAL_HOURS")
-    if not key_validation_interval_in_db:
-        logging.info("KEY_VALIDATION_INTERVAL_HOURS not found in DB, seeding from config file.")
-        await config_manager.set_config("KEY_VALIDATION_INTERVAL_HOURS", str(KEY_VALIDATION_INTERVAL_HOURS))
+        # KEY_VALIDATION_INTERVAL_HOURS
+        key_validation_interval_in_db = await config_manager.get_config("KEY_VALIDATION_INTERVAL_HOURS")
+        if not key_validation_interval_in_db:
+            logging.info("KEY_VALIDATION_INTERVAL_HOURS not found in DB, seeding from config file.")
+            await config_manager.set_config("KEY_VALIDATION_INTERVAL_HOURS", str(KEY_VALIDATION_INTERVAL_HOURS))
 
-    # SCHEDULER_TIMEZONE
-    scheduler_timezone_in_db = await config_manager.get_config("SCHEDULER_TIMEZONE")
-    if not scheduler_timezone_in_db:
-        logging.info("SCHEDULER_TIMEZONE not found in DB, seeding from config file.")
-        await config_manager.set_config("SCHEDULER_TIMEZONE", SCHEDULER_TIMEZONE)
+        # SCHEDULER_TIMEZONE
+        scheduler_timezone_in_db = await config_manager.get_config("SCHEDULER_TIMEZONE")
+        if not scheduler_timezone_in_db:
+            logging.info("SCHEDULER_TIMEZONE not found in DB, seeding from config file.")
+            await config_manager.set_config("SCHEDULER_TIMEZONE", SCHEDULER_TIMEZONE)
 
-    # ERROR_LOG_RETENTION_DAYS
-    error_log_retention_in_db = await config_manager.get_config("ERROR_LOG_RETENTION_DAYS")
-    if not error_log_retention_in_db:
-        logging.info("ERROR_LOG_RETENTION_DAYS not found in DB, seeding from config file.")
-        await config_manager.set_config("ERROR_LOG_RETENTION_DAYS", str(ERROR_LOG_RETENTION_DAYS))
+        # ERROR_LOG_RETENTION_DAYS
+        error_log_retention_in_db = await config_manager.get_config("ERROR_LOG_RETENTION_DAYS")
+        if not error_log_retention_in_db:
+            logging.info("ERROR_LOG_RETENTION_DAYS not found in DB, seeding from config file.")
+            await config_manager.set_config("ERROR_LOG_RETENTION_DAYS", str(ERROR_LOG_RETENTION_DAYS))
 
-    # REQUEST_LOG_RETENTION_DAYS
-    request_log_retention_in_db = await config_manager.get_config("REQUEST_LOG_RETENTION_DAYS")
-    if not request_log_retention_in_db:
-        logging.info("REQUEST_LOG_RETENTION_DAYS not found in DB, seeding from config file.")
-        await config_manager.set_config("REQUEST_LOG_RETENTION_DAYS", str(REQUEST_LOG_RETENTION_DAYS))
+        # REQUEST_LOG_RETENTION_DAYS
+        request_log_retention_in_db = await config_manager.get_config("REQUEST_LOG_RETENTION_DAYS")
+        if not request_log_retention_in_db:
+            logging.info("REQUEST_LOG_RETENTION_DAYS not found in DB, seeding from config file.")
+            await config_manager.set_config("REQUEST_LOG_RETENTION_DAYS", str(REQUEST_LOG_RETENTION_DAYS))
+
+    finally:
+        # 初始化阶段由应用生命周期统一启动调度器，无需重启
+        await config_manager.end_bulk_update(restart=False)
 
     # 初始化 KeyManager
     await key_manager.initialize_from_env()

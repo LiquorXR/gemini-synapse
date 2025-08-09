@@ -22,18 +22,15 @@ class JobService:
             return await cursor.fetchall()
 
     async def delete_old_logs(self, retention_days: int, table_name: str):
-        """从指定表中删除超过保留期限的日志"""
+        """从指定表中删除超过保留期限的日志（限制在白名单表名内）。"""
+        allowed_tables = {"error_logs", "api_call_history"}
+        if table_name not in allowed_tables:
+            logger.warning(f"Attempt to delete from non-allowed table: {table_name}. Skipped.")
+            return 0
         async with aiosqlite.connect(self.db_url) as db:
-            # For api_call_history, we need to handle the timestamp format which might be different
-            if table_name == 'api_call_history':
-                 # SQLite's datetime function works with ISO 8601 formats.
-                cursor = await db.execute(
-                    f"DELETE FROM {table_name} WHERE timestamp < datetime('now', '-{retention_days} days')"
-                )
-            else:
-                cursor = await db.execute(
-                    f"DELETE FROM {table_name} WHERE timestamp < datetime('now', '-{retention_days} days')"
-                )
+            # 使用参数占位符仅绑定保留天数，表名使用白名单硬编码避免注入
+            sql = f"DELETE FROM {table_name} WHERE timestamp < datetime('now', ?)"
+            cursor = await db.execute(sql, (f"-{retention_days} days",))
             await db.commit()
             logger.info(f"Deleted {cursor.rowcount} old records from {table_name}.")
             return cursor.rowcount
@@ -93,15 +90,19 @@ async def cleanup_request_logs():
     else:
         logger.warning("REQUEST_LOG_RETENTION_DAYS not configured. Skipping cleanup.")
 
+async def cleanup_expired_sessions():
+    """定时任务：清理数据库中所有已过期的管理员会话。"""
+    logger.info("Starting scheduled job: cleanup_expired_sessions")
+    async with aiosqlite.connect(DATABASE_URL) as db:
+        # 直接删除 expires_at 早于当前时间的记录
+        cursor = await db.execute(
+            "DELETE FROM admin_sessions WHERE expires_at < ?",
+            (datetime.now(timezone.utc).isoformat(),)
+        )
+        await db.commit()
+        if cursor.rowcount > 0:
+            logger.info(f"Cleaned up {cursor.rowcount} expired admin sessions.")
 
-async def cleanup_all_sessions():
-   """定时任务：清理所有管理员会话"""
-   logger.info("Starting scheduled job: cleanup_all_sessions")
-   async with aiosqlite.connect(DATABASE_URL) as db:
-       cursor = await db.execute("DELETE FROM admin_sessions")
-       await db.commit()
-       if cursor.rowcount > 0:
-           logger.info(f"Cleaned up {cursor.rowcount} admin sessions.")
 
 # --- 调度器设置与控制 ---
 scheduler = None
@@ -127,7 +128,16 @@ async def setup_scheduler():
     sch.remove_all_jobs()
 
     interval_hours_str = await config_manager.get_config("KEY_VALIDATION_INTERVAL_HOURS")
-    interval_hours = int(interval_hours_str) if interval_hours_str else 1
+    try:
+        interval_value = int(interval_hours_str) if interval_hours_str is not None else 1
+    except (TypeError, ValueError):
+        logger.warning(
+            "Invalid KEY_VALIDATION_INTERVAL_HOURS value: %r. Falling back to 1 hour.",
+            interval_hours_str,
+        )
+        interval_value = 1
+    # Enforce a sensible lower bound to avoid too-frequent scheduling and perceived duplicates
+    interval_hours = max(1, interval_value)
     
     sch.add_job(
         scheduled_key_validation,
@@ -156,10 +166,11 @@ async def setup_scheduler():
         coalesce=True,
     )
     sch.add_job(
-        cleanup_all_sessions,
-        "interval",
-        minutes=60,
-        id="cleanup_all_sessions_job",
+        cleanup_expired_sessions,
+        "cron",
+        hour=3,
+        minute=10,
+        id="cleanup_expired_sessions_job",
         misfire_grace_time=None,
         coalesce=True,
     )

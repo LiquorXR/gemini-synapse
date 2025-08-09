@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request, Response, Depends, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from contextlib import asynccontextmanager
 import httpx
 import logging
@@ -9,9 +9,9 @@ import os
 from api.path_builder import build_upstream_url
 
 from api.database import key_manager, config_manager, initialize_database
-from api.config import GEMINI_API_BASE_URL, ENVIRONMENT
+from api.config import ENVIRONMENT
 from api.security import security_service
-from api.exceptions import APIError, ServiceUnavailableError, UnretryableError, AllKeysFailedError
+from api.exceptions import APIError, ServiceUnavailableError, UnretryableError, AllKeysFailedError, NotFoundError
 from api.admin import router as admin_router
 from api.scheduler import start_scheduler, stop_scheduler
 from pydantic import BaseModel
@@ -63,29 +63,24 @@ async def detailed_logging_middleware(request: Request, call_next):
         "client": request.client.host if request.client else "unknown",
         "method": request.method,
         "path": request.url.path,
-        "query": str(request.query_params),
     }
     
     # 过滤敏感头部
-    sensitive_headers = {"authorization", "x-goog-api-key", "master_key"}
+    sensitive_headers = {"authorization", "x-goog-api-key", "cookie", "set-cookie"}
     headers = {k: v for k, v in request.headers.items() if k.lower() not in sensitive_headers}
     request_details["headers"] = headers
 
-    # 安全地读取请求体
-    # 对于流式请求或大文件上传，读取请求体可能不合适或效率低下
-    # 我们只记录 application/json 类型的内容
-    body = None
-    content_type = request.headers.get("content-type", "")
-    if "application/json" in content_type:
-        try:
-            body = await request.json()
-        except json.JSONDecodeError:
-            body = await request.body()
-            body = body.decode('utf-8', errors='ignore') # 尝试解码为文本
+    # 掩蔽敏感查询参数
+    try:
+        qp = dict(request.query_params)
+        if "key" in qp:
+            qp["key"] = "***"
+        request_details["query"] = qp
+    except Exception:
+        request_details["query"] = str(request.query_params)
     
     logger.info(f"Request received: {json.dumps(request_details, indent=2, ensure_ascii=False)}")
-    if body:
-        logger.info(f"Request body: {json.dumps(body, indent=2, ensure_ascii=False)}")
+    # 不再记录请求体，避免敏感信息泄露
 
 
     response = await call_next(request)
@@ -113,6 +108,8 @@ async def login(payload: LoginPayload):
     管理员登录端点。
     成功后，设置一个安全的 HttpOnly Cookie。
     """
+    # 基础延迟，缓解暴力破解
+    await asyncio.sleep(0.5)
     try:
         admin_key_from_db = await config_manager.get_config("ADMIN_KEY")
         if payload.admin_key and payload.admin_key == admin_key_from_db:
@@ -130,6 +127,8 @@ async def login(payload: LoginPayload):
             )
             return response
         else:
+            # 失败时增加额外延迟，进一步缓解暴力破解
+            await asyncio.sleep(1)
             raise APIError(status_code=401, detail="Invalid admin key.")
     except APIError as e:
         raise e
@@ -245,10 +244,10 @@ class ProxyService:
                     logger.warning(f"Key rotation triggered for status {r.status_code} for key ...{key[-4:]}. Rotating immediately.")
                     raise httpx.HTTPStatusError(f"Status {r.status_code}: {error_body.decode()}", request=req, response=r) # Re-raise to trigger rotation
 
-                # 404 错误是明确的“未找到”，不可重试
-                if r.status_code in {404}:
-                    logger.warning(f"Unretryable client error: {r.status_code}. Failing fast for this key.")
-                    raise UnretryableError(detail=error_body.decode())
+                # 404 错误透传为 NotFound（避免错误映射为 400）
+                if r.status_code == 404:
+                    logger.warning("Upstream returned 404. Failing fast without retry for this key.")
+                    raise NotFoundError(detail=error_body.decode())
 
                 logger.warning(f"Attempt {attempt + 1}/{max_retries} for key ...{key[-4:]} failed: {last_exception}")
 
@@ -284,7 +283,7 @@ class ProxyService:
         query_params = dict(request.query_params)
         query_params.pop('key', None)
 
-        excluded_headers = ['host', 'authorization', 'x-goog-api-key', 'content-length']
+        excluded_headers = ['host', 'authorization', 'x-goog-api-key', 'content-length', 'cookie', 'set-cookie']
         headers = {k: v for k, v in request.headers.items() if k.lower() not in excluded_headers}
         
         request_body = await request.body()
@@ -310,6 +309,10 @@ class ProxyService:
             except UnretryableError as e:
                 # 如果是不可重试的错误(404)，直接抛出给全局处理器，不再轮换密钥
                 logger.error(f"Unretryable error received from upstream. Aborting rotations. Details: {e.detail}")
+                raise e
+            except APIError as e:
+                # 例如 NotFoundError：直接透传，不再轮换
+                logger.error(f"APIError received from upstream. Aborting rotations. Details: {e.detail}")
                 raise e
             except httpx.RequestError as e:
                 # 网络错误（在单密钥重试后）：不记录密钥失败，直接终止整个请求。

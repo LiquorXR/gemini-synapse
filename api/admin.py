@@ -20,8 +20,7 @@ class APIKeyInfo(BaseModel):
     failure_count: int
     last_used: str | None
 
-class NewAPIKey(BaseModel):
-    key: str
+# 移除未使用模型 NewAPIKey
 
 class KeyStats(BaseModel):
     total_keys: int
@@ -241,8 +240,9 @@ async def batch_add_keys(payload: BatchNewKeys):
         rows = await cursor.fetchall()
         existing_keys = {row[0] for row in rows}
 
-    # 2. 过滤掉已经存在的密钥
-    new_keys_to_add = [key.strip() for key in payload.keys if key.strip() and key.strip() not in existing_keys]
+    # 2. 去重并过滤掉已经存在的密钥
+    unique_inputs = {key.strip() for key in payload.keys if key.strip()}
+    new_keys_to_add = [key for key in unique_inputs if key not in existing_keys]
     
     added_count = len(new_keys_to_add)
 
@@ -721,9 +721,10 @@ async def get_available_models():
     """从 Google API 获取可用的模型列表。如果失败则返回空列表。"""
     max_retries = 5
     for attempt in range(max_retries):
-        api_key = await key_manager.get_key()
-        if not api_key:
-            # No keys available at all, or all keys failed. Stop trying.
+        try:
+            api_key = await key_manager.get_key()
+        except Exception:
+            # 没有可用密钥或全部失败
             return []
 
         url = await build_upstream_url("models")
@@ -782,11 +783,18 @@ async def get_scheduler_config():
 
 @router.post("/scheduler/config", status_code=200)
 async def set_scheduler_config(payload: SchedulerConfig):
-    """设置新的定时任务配置并重启调度器"""
-    await config_manager.set_config("VALIDATION_MODEL", payload.validation_model)
-    await config_manager.set_config("KEY_VALIDATION_INTERVAL_HOURS", str(payload.validation_interval))
-    await config_manager.set_config("SCHEDULER_TIMEZONE", payload.scheduler_timezone)
-    await config_manager.set_config("ERROR_LOG_RETENTION_DAYS", str(payload.error_log_retention_days))
-    await config_manager.set_config("REQUEST_LOG_RETENTION_DAYS", str(payload.request_log_retention_days))
-    
+    """设置新的定时任务配置并重启调度器（仅一次）。"""
+    # 统一做下限保护，避免极小间隔导致频繁触发
+    safe_interval_hours = max(1, int(payload.validation_interval))
+
+    config_manager.begin_bulk_update()
+    try:
+        await config_manager.set_config("VALIDATION_MODEL", payload.validation_model)
+        await config_manager.set_config("KEY_VALIDATION_INTERVAL_HOURS", str(safe_interval_hours))
+        await config_manager.set_config("SCHEDULER_TIMEZONE", payload.scheduler_timezone)
+        await config_manager.set_config("ERROR_LOG_RETENTION_DAYS", str(payload.error_log_retention_days))
+        await config_manager.set_config("REQUEST_LOG_RETENTION_DAYS", str(payload.request_log_retention_days))
+    finally:
+        await config_manager.end_bulk_update(restart=True)
+
     return {"message": "定时任务配置已更新并成功应用。"}

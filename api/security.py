@@ -3,7 +3,7 @@
 
 遵循单一职责原则，将认证逻辑与核心业务逻辑分离。
 """
-from fastapi import Request, Depends
+from fastapi import Request
 import secrets
 import aiosqlite
 from datetime import datetime, timedelta, timezone
@@ -87,17 +87,7 @@ class SecurityService:
             await self.delete_admin_session(token)
             raise AuthenticationError("Admin session has expired.")
 
-    async def verify_admin_key_from_body(self, payload: dict):
-        """
-        从请求体中验证管理员密钥。
-        """
-        admin_key = await config_manager.get_config("ADMIN_KEY")
-        if not admin_key:
-            raise AuthenticationError("Admin key is not configured in the database.")
-            
-        key = payload.get("admin_key")
-        if not key or key != admin_key:
-            raise AuthenticationError("Invalid or missing admin key.")
+    # 移除未使用的 verify_admin_key_from_body，避免冗余接口
 
 # 创建一个可以被 FastAPI 依赖注入系统使用的单例
 security_service = SecurityService()

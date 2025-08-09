@@ -4,5 +4,4 @@ uvicorn
 aiosqlite
 python-dotenv
 apscheduler
-filelock
 tzdata
