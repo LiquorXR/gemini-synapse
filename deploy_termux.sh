@@ -198,10 +198,10 @@ show_main_menu() {
     echo -e "${GREEN}  ███████║   ██║   ██║ ╚████║██║  ██║██║      ███████║███████╗${NC}"
     echo -e "${GREEN}  ╚══════╝   ╚═╝   ╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝      ╚══════╝╚══════╝${NC}"
     echo -e "${BLUE}=========================================================${NC}"
-    echo -e "  ${BOLD}[1]${NC} ${YELLOW} 环境检测${NC}   - 检查脚本运行所需环境和依赖"
-    echo -e "  ${BOLD}[2]${NC} ${YELLOW} 更新服务${NC}   - 更新应用服务和依赖"
-    echo -e "  ${BOLD}[3]${NC} ${YELLOW} 启动服务${NC}   - 启动 Gemini Synapse 服务"
-    echo -e "  ${BOLD}[4]${NC} ${YELLOW} 退出脚本${NC}   - 关闭脚本"
+    echo -e "  ${BOLD}[1]${NC} ${YELLOW}环境检测${NC}   - 检查脚本运行所需环境和依赖"
+    echo -e "  ${BOLD}[2]${NC} ${YELLOW}更新服务${NC}   - 更新应用服务和依赖"
+    echo -e "  ${BOLD}[3]${NC} ${GREEN}启动服务${NC}   - 启动 Gemini Synapse 服务"
+    echo -e "  ${BOLD}[4]${NC} ${YELLOW}退出脚本${NC}   - 关闭脚本"
     echo -e "${BLUE}=========================================================${NC}"
     read -p "请输入选项 [1-4]: " menu_choice < /dev/tty
 
