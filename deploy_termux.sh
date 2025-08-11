@@ -170,6 +170,8 @@ start_service() {
 
   echo -e "\n${BLUE}正在启动保持服务...${NC}"
   uvicorn api.index:app --host 0.0.0.0 --port 8000
+  # 服务停止后，返回上一级目录，确保主菜单路径正确
+  cd ..
 }
 
 # --- 主菜单 ---
