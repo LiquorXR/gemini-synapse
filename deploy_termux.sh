@@ -168,7 +168,6 @@ start_service() {
   echo -e "  - ${BOLD}Web 管理面板:${NC} http://127.0.0.1:8000"
   echo -e "\n${YELLOW}按 ${BOLD}Ctrl+C${NC} 组合键来停止服务。${NC}\n"
 
-  echo -e "\n${BLUE}正在启动保持服务...${NC}"
   uvicorn api.index:app --host 0.0.0.0 --port 8000
   # 服务停止后，返回上一级目录，确保主菜单路径正确
   cd ..
