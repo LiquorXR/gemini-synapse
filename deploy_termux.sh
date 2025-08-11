@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==============================================================================
-# Gemini Synapse - Termux 部署与管理脚本
+# Gemini Synapse - Termux
 # ==============================================================================
 
 set -e
@@ -156,19 +156,27 @@ start_service() {
       echo -e "${YELLOW}请先完成初始环境配置，或从菜单中选择更新服务。${NC}"
       return 1
   fi
+
+  # --- 新增：端口设置 ---
+  local port
+  read -p "请输入要使用的端口号 (留空则默认为 8000): " port
+  # 如果用户未输入，则使用默认端口 8000
+  if [ -z "$port" ]; then
+    port=8000
+  fi
   
   echo -e "\n${GREEN}===================================================${NC}"
-  echo -e "${GREEN}${BOLD}准备启动应用程序...${NC}"
+  echo -e "${GREEN}${BOLD}启动应用程序...${NC}"
   echo -e "${GREEN}===================================================${NC}"
   
   cd gemini-synapse
   
   echo -e "您可以通过以下地址访问服务:"
-  echo -e "  - ${BOLD}API 代理地址:${NC} http://127.0.0.1:8000"
-  echo -e "  - ${BOLD}Web 管理面板:${NC} http://127.0.0.1:8000"
+  echo -e "  - ${BOLD}API 代理地址:${NC} http://127.0.0.1:${port}"
+  echo -e "  - ${BOLD}Web 管理面板:${NC} http://127.0.0.1:${port}"
   echo -e "\n${YELLOW}按 ${BOLD}Ctrl+C${NC} 组合键来停止服务。${NC}\n"
 
-  uvicorn api.index:app --host 0.0.0.0 --port 8000
+  uvicorn api.index:app --host 0.0.0.0 --port ${port}
   # 服务停止后，返回上一级目录，确保主菜单路径正确
   cd ..
 }
