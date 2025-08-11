@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# curl -sS -O https://raw.githubusercontent.com/LiquorXR/gemini-synapse/refs/heads/main/deploy_termux.sh && chmod +x deploy_termux.sh && ./deploy_termux.sh
 # ==============================================================================
 # Gemini Synapse - Termux
 # ==============================================================================
