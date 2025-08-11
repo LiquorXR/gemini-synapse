@@ -159,7 +159,7 @@ start_service() {
 
   # --- 新增：端口设置 ---
   local port
-  read -p "请输入要使用的端口号 (留空则默认为 8000): " port
+  read -p "请输入启动的端口号 (默认为 8000): " port < /dev/tty
   # 如果用户未输入，则使用默认端口 8000
   if [ -z "$port" ]; then
     port=8000
@@ -184,22 +184,43 @@ start_service() {
 # --- 主菜单 ---
 show_main_menu() {
   while true; do
-    echo -e "\n${BOLD}--- Gemini Synapse 主菜单 ---${NC}"
-    echo "1. 环境检测"
-    echo "2. 更新服务 (git pull & 安装依赖)"
-    echo "3. 启动服务"
-    echo "4. 退出"
-    read -p "请输入选项 [1-4]: " menu_choice
+    clear # 清屏以获得更好的视觉效果
+    echo -e "${GREEN}"
+    echo '  ________                      .__           .__  .__'
+    echo ' /  _____/ __ _______ _______  |  |   ___.__.|  | |  |   ___________'
+    echo '/   \  ___|  |  \__  \\_  __ \ |  |  <   |  ||  | |  | _/ __ \_  __ \'
+    echo '\    \_\  \  |  // __ \|  | \/ |  |__ \___  ||  |_|  |_\  ___/|  | \/'
+    echo ' \______  /____/(____  /__|    |____/ / ____||____/____/\___  >__|'
+    echo '        \/           \/               \/                    \/'
+    echo '   _________.__                 __'
+    echo '  /   _____/|  |__   ____   ____/  |_  ___________'
+    echo '  \_____  \ |  |  \_/ __ \_/ ___\   __\/  _ \_  __ \'
+    echo ' /        \|   Y  \  ___/\  \___|  | (  <_> )  | \/'
+    echo '/_______  /|___|  /\___  >\___  >__|  \____/|__|'
+    echo '         \/      \/     \/     \/'
+    echo -e "${NC}"
+    echo -e "${BLUE}==============================================================${NC}"
+    echo -e "  ${BOLD}1.${NC} ${YELLOW}环境检测${NC}       - 检查脚本运行所需环境和依赖"
+    echo -e "  ${BOLD}2.${NC} ${YELLOW}更新服务${NC}       - 更新应用服务和依赖"
+    echo -e "  ${BOLD}3.${NC} ${YELLOW}启动服务${NC}       - 启动 Gemini Synapse 服务"
+    echo -e "  ${BOLD}4.${NC} ${YELLOW}退出脚本${NC}       - 关闭脚本"
+    echo -e "${BLUE}==============================================================${NC}"
+    read -p "请输入选项 [1-4]: " menu_choice < /dev/tty
 
     case $menu_choice in
       1)
         check_environment
+        read -p $'\n'"按任意键返回主菜单..." -n 1 -s < /dev/tty
         ;;
       2)
         update_service
+        read -p $'\n'"按任意键返回主菜单..." -n 1 -s < /dev/tty
         ;;
       3)
         start_service
+        # start_service 是前台任务，结束后会自动返回
+        echo -e "\n${YELLOW}服务已停止。${NC}"
+        read -p "按任意键返回主菜单..." -n 1 -s < /dev/tty
         ;;
       4)
         echo "正在退出脚本。"
@@ -207,6 +228,7 @@ show_main_menu() {
         ;;
       *)
         echo -e "${RED}无效选项，请输入 1-4 之间的数字。${NC}"
+        sleep 2
         ;;
     esac
   done
