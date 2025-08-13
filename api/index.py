@@ -15,6 +15,12 @@ from api.exceptions import APIError, ServiceUnavailableError, UnretryableError, 
 from api.admin import router as admin_router
 from api.scheduler import start_scheduler, stop_scheduler
 from pydantic import BaseModel
+import mimetypes
+
+# --- MIME 类型修正 ---
+# 在某些环境中，.js 文件可能被错误地识别为 text/plain
+# 我们在此显式地将其注册为 application/javascript，以修复前端模块加载问题
+mimetypes.add_type("application/javascript", ".js")
 
 # --- 日志配置 ---
 logging.basicConfig(
