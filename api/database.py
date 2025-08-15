@@ -298,7 +298,7 @@ class KeyManager:
             async with aiosqlite.connect(self.db_url) as db:
                 async with db.execute("BEGIN"):
                     # 1. 重置失败计数
-                    await db.execute("UPDATE api_keys SET failure_count = 0 WHERE key = ? AND failure_count > 0", (key,))
+                    await db.execute("UPDATE api_keys SET is_valid = 1, failure_count = 0 WHERE key = ?", (key,))
                     
                     # 2. 记录详细调用历史 (仅当模型名称存在时)
                     if model_name:

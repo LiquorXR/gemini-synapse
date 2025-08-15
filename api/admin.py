@@ -514,7 +514,6 @@ async def batch_validate_keys(payload: BatchKeyIDs):
             if i + batch_size < len(keys_to_validate):
                 await asyncio.sleep(0.5)
 
-    key_manager.key_queue.clear()
     return None
 
 # --- 新增的配置管理路由 ---
