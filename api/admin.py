@@ -253,7 +253,6 @@ async def batch_add_keys(payload: BatchNewKeys):
     for key in new_keys_to_add:
         await key_manager.add_key(key)
         
-    key_manager.key_queue.clear()
     return BatchAddResponse(message=f"Successfully added {added_count} keys.", added_count=added_count)
 
 @router.post("/keys/reveal", response_model=RevealedKeysResponse)
@@ -378,7 +377,6 @@ async def delete_key(key_id: int):
     async with aiosqlite.connect(DATABASE_URL) as db:
         await db.execute("DELETE FROM api_keys WHERE id = ?", (key_id,))
         await db.commit()
-    key_manager.key_queue.clear()
     return None
 
 @router.post("/keys/batch-delete", response_model=BatchDeleteResponse)
@@ -393,7 +391,6 @@ async def batch_delete_keys(payload: BatchKeyIDs):
         await db.commit()
         deleted_count = cursor.rowcount
         
-    key_manager.key_queue.clear()
     return BatchDeleteResponse(message=f"Successfully deleted {deleted_count} keys.", deleted_count=deleted_count)
 
 @router.post("/keys/batch-delete-by-value")
@@ -408,7 +405,6 @@ async def batch_delete_keys_by_value(payload: BatchDeleteByValue):
         await db.commit()
         deleted_count = cursor.rowcount
     
-    key_manager.key_queue.clear()
     return {"message": f"Successfully deleted {deleted_count} keys.", "deleted_count": deleted_count}
 
 @router.post("/keys/batch-deactivate", status_code=204)
@@ -420,7 +416,6 @@ async def batch_deactivate_keys(payload: BatchKeyIDs):
         placeholders = ','.join('?' for _ in payload.key_ids)
         await db.execute(f"UPDATE api_keys SET is_valid = 0 WHERE id IN ({placeholders})", payload.key_ids)
         await db.commit()
-    key_manager.key_queue.clear()
     return None
 
 @router.post("/keys/batch-reset", status_code=204)
@@ -432,7 +427,6 @@ async def batch_reset_keys(payload: BatchKeyIDs):
         placeholders = ','.join('?' for _ in payload.key_ids)
         await db.execute(f"UPDATE api_keys SET is_valid = 1, failure_count = 0 WHERE id IN ({placeholders})", payload.key_ids)
         await db.commit()
-    key_manager.key_queue.clear()
     return None
 
 @router.put("/keys/{key_id}/status", response_model=APIKeyInfo)
@@ -449,7 +443,6 @@ async def toggle_key_status(key_id: int):
         await db.execute("UPDATE api_keys SET is_valid = ? WHERE id = ?", (new_status, key_id))
         await db.commit()
     
-    key_manager.key_queue.clear()
 
     # Return the updated key
     async with aiosqlite.connect(DATABASE_URL) as db:
