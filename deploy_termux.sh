@@ -152,9 +152,21 @@ update_service() {
 
 start_service() {
   if [ ! -f "gemini-synapse/.env" ]; then
-      echo -e "${RED}错误: .env 配置文件不存在！${NC}"
-      echo -e "${YELLOW}请先完成初始环境配置，或从菜单中选择更新服务。${NC}"
-      return 1
+      echo -e "${YELLOW}.env 配置文件不存在。${NC}"
+      read -p "是否从 .env.example 创建默认配置文件? (Y/n): " confirm < /dev/tty
+      if [[ "$confirm" == "y" || "$confirm" == "Y" || "$confirm" == "" ]]; then
+          if [ -f "gemini-synapse/.env.example" ]; then
+              cp "gemini-synapse/.env.example" "gemini-synapse/.env"
+              echo -e "${GREEN}.env 文件已成功创建。${NC}"
+              echo -e "${YELLOW}脚本将使用默认环境变量值启动。如有需要，请稍后手动编辑 .env 文件。${NC}"
+          else
+              echo -e "${RED}错误: .env.example 文件不存在，无法创建 .env 文件。${NC}"
+              return 1
+          fi
+      else
+          echo -e "${RED}用户取消操作，返回主菜单。${NC}"
+          return 1
+      fi
   fi
 
   # --- 新增：端口设置 ---
