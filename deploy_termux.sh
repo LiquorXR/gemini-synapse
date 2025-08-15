@@ -207,15 +207,15 @@ show_main_menu() {
 
     case $menu_choice in
       1)
-        check_environment
+        check_environment || true
         read -p $'\n'"按任意键返回主菜单..." -n 1 -s < /dev/tty
         ;;
       2)
-        update_service
+        update_service || true
         read -p $'\n'"按任意键返回主菜单..." -n 1 -s < /dev/tty
         ;;
       3)
-        start_service
+        start_service || true
         # start_service 是前台任务，结束后会自动返回
         echo -e "\n${YELLOW}服务已停止。${NC}"
         read -p "按任意键返回主菜单..." -n 1 -s < /dev/tty
