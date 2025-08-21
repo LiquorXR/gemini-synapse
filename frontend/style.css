@@ -329,7 +329,3 @@ body.loaded #loader-wrapper {
     text-decoration: underline;
     text-underline-offset: 4px;
 }
-/* Fix for chart rendering issues on mobile browsers */
-#api-trend-chart {
-  transform: translateZ(0);
-}
