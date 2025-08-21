@@ -98,11 +98,6 @@ export function renderApiTrendChart(trendData) {
   // Chart is provided by CDN in index.html
   // eslint-disable-next-line no-undef
   appState.apiTrendChart = new Chart(ctx, chartConfig);
-setTimeout(() => {
-    if (appState.apiTrendChart) {
-      appState.apiTrendChart.update('none'); // 'none' prevents animation
-    }
-  }, 1); // A minimal delay to allow the initial render to complete
 }
 
 
