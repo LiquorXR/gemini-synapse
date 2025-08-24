@@ -276,10 +276,15 @@
 
     <!-- Validation Progress Modal -->
     <dialog id="validation-modal">
-        <article style="max-width: 320px; text-align: center; padding-top: 1.5rem; padding-bottom: 1.5rem;">
-            <h5 style="margin-bottom: 1.5rem;">正在验证密钥...</h5>
-            <div aria-busy="true"></div>
-        </article>
+      <article>
+        <header>
+          <h5>验证密钥</h5>
+        </header>
+        <p id="validation-progress-text">正在准备验证...</p>
+        <div class="progress-container">
+          <div id="validation-progress-bar" class="progress-bar"></div>
+        </div>
+      </article>
     </dialog>
 
     <!-- Generic Modal for Confirmations and Notifications -->

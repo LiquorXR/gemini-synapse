@@ -329,3 +329,17 @@ body.loaded #loader-wrapper {
     text-decoration: underline;
     text-underline-offset: 4px;
 }
+.progress-container {
+  width: 100%;
+  background-color: #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 1rem;
+}
+
+.progress-bar {
+  width: 0%;
+  height: 10px;
+  background-color: var(--pico-primary);
+  transition: width 0.3s ease-in-out;
+}

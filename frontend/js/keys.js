@@ -120,6 +120,49 @@ export async function showDetailsModal(keyId, keyPartial) {
   }
 }
 
+function performStreamingValidation(keyIds) {
+  const validationModal = elements.validationModal;
+  const progressText = validationModal.querySelector('#validation-progress-text');
+  const progressBar = validationModal.querySelector('#validation-progress-bar');
+
+  // 重置并显示模态窗
+  progressText.textContent = '正在准备验证...';
+  progressBar.style.width = '0%';
+  validationModal.showModal();
+
+  const url = `/admin/keys/batch-validate-stream?key_ids=${keyIds.join(',')}`;
+  const evtSource = new EventSource(url);
+
+  evtSource.onmessage = function(event) {
+    const data = JSON.parse(event.data);
+
+    if (data.status === 'done') {
+      evtSource.close(); // 立即关闭连接，防止 onerror 触发
+      progressText.textContent = data.message;
+      progressBar.style.width = '100%';
+      setTimeout(() => {
+        validationModal.close();
+        if (refreshAllCallback) refreshAllCallback();
+      }, 1500); // 延迟关闭模态窗，让用户看到完成状态
+    } else if (data.status === 'error') {
+      showError(`验证失败: ${data.message}`);
+      evtSource.close();
+      validationModal.close();
+    } else {
+      // 更新进度
+      progressText.textContent = `正在验证... (${data.processed}/${data.total})`;
+      progressBar.style.width = `${data.percent}%`;
+    }
+  };
+
+  evtSource.onerror = function(err) {
+    showError('与服务器的连接丢失，验证中断。');
+    console.error("EventSource failed:", err);
+    evtSource.close();
+    validationModal.close();
+  };
+}
+
 export async function handleValidateAllList(listType) {
   const keysToValidate = appState.allKeys.filter((k) => k.is_valid === (listType === CONSTANTS.LIST_TYPES.VALID));
   const keyIds = keysToValidate.map((k) => k.id);
@@ -129,23 +172,11 @@ export async function handleValidateAllList(listType) {
   }
   showModal({
     title: '确认验证',
-    body: `验证当前列表中的全部 ${keyIds.length} 个密钥吗？`,
+    body: `验证当前列表中的全部 ${keyIds.length} 个密钥`,
     confirmText: '验证',
     cancelText: '取消',
-    onConfirm: async () => {
-      elements.validationModal.showModal();
-      try {
-        await fetch('/admin/keys/batch-validate/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ key_ids: keyIds }),
-        });
-        if (refreshAllCallback) refreshAllCallback();
-      } catch (err) {
-        showError(err.message);
-      } finally {
-        elements.validationModal.close();
-      }
+    onConfirm: () => {
+      performStreamingValidation(keyIds);
     },
   });
 }
@@ -214,16 +245,8 @@ export async function handleFloatingBarAction(e) {
       },
     });
   } else if (action === CONSTANTS.ACTIONS.BATCH_VALIDATE) {
-    elements.validationModal.showModal();
-    try {
-      await performAction('/admin/keys/batch-validate/', { key_ids: selectedIds });
-      if (refreshAllCallback) refreshAllCallback();
-      unselectAll();
-    } catch (err) {
-      showError(err.message);
-    } finally {
-      elements.validationModal.close();
-    }
+    performStreamingValidation(selectedIds);
+    unselectAll();
   } else if (action === CONSTANTS.ACTIONS.BATCH_COPY) {
     try {
       const revealResponse = await fetch('/admin/keys/reveal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key_ids: selectedIds }) });

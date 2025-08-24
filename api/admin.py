@@ -3,6 +3,8 @@ from typing import List
 import aiosqlite
 import asyncio
 import httpx
+import json
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 import datetime
 from zoneinfo import ZoneInfo
@@ -497,6 +499,69 @@ async def validate_gemini_key(client: httpx.AsyncClient, key: str, model: str) -
         return False, 408, "Request timed out"
     except httpx.RequestError as e:
         return False, 500, f"Client error: {str(e)}"
+
+@router.get("/keys/batch-validate-stream")
+async def batch_validate_keys_stream(key_ids: str):
+    """
+    通过 Server-Sent Events (SSE) 流式批量验证密钥的有效性。
+    """
+    if not key_ids:
+        return
+
+    # 从查询字符串解析 key_ids
+    try:
+        key_ids_list = [int(kid) for kid in key_ids.split(',')]
+    except ValueError:
+        # 如果ID格式不正确，可以提前返回错误或忽略
+        return
+
+    async def event_generator():
+        """事件生成器，用于产生 SSE 事件流"""
+        try:
+            batch_size = 10
+            validation_model_name = await config_manager.get_config("VALIDATION_MODEL") or "gemini-1.5-flash-latest"
+
+            async with aiosqlite.connect(DATABASE_URL) as db:
+                placeholders = ','.join('?' for _ in key_ids_list)
+                cursor = await db.execute(f"SELECT id, key FROM api_keys WHERE id IN ({placeholders})", key_ids_list)
+                keys_to_validate = await cursor.fetchall()
+            
+            total_keys = len(keys_to_validate)
+            processed_count = 0
+
+            async with httpx.AsyncClient() as client:
+                for i in range(0, total_keys, batch_size):
+                    batch = keys_to_validate[i:i + batch_size]
+                    tasks = [asyncio.create_task(validate_gemini_key(client, key_value, validation_model_name)) for _, key_value in batch]
+                    results = await asyncio.gather(*tasks)
+
+                    # 处理批次结果
+                    for (_, key_value), (is_valid, status_code, message) in zip(batch, results):
+                        if is_valid:
+                            await key_manager.record_success(key_value, validation_model_name)
+                        else:
+                            await key_manager.record_failure(key_value, validation_model_name, status_code, message)
+                    
+                    processed_count += len(batch)
+                    
+                    # 生成并发送进度事件
+                    progress_data = {
+                        "processed": processed_count,
+                        "total": total_keys,
+                        "percent": int((processed_count / total_keys) * 100)
+                    }
+                    yield f"data: {json.dumps(progress_data)}\n\n"
+            
+            # 发送完成事件
+            done_data = {"status": "done", "message": "密钥验证完成。"}
+            yield f"data: {json.dumps(done_data)}\n\n"
+
+        except Exception as e:
+            # 在流中报告错误
+            error_data = {"status": "error", "message": f"验证过程中发生错误: {str(e)}"}
+            yield f"data: {json.dumps(error_data)}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 @router.post("/keys/batch-validate/", status_code=204)
 async def batch_validate_keys(payload: BatchKeyIDs):
