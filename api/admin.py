@@ -462,12 +462,11 @@ async def validate_gemini_key(client: httpx.AsyncClient, key: str, model: str) -
     使用 httpx 向 Gemini API 发送一个低成本的 generateContent 请求来严格验证密钥。
     返回 (is_valid, status_code, message)
     """
-    # 修改1：目标 URL 变为 generateContent
     url = await build_upstream_url(f"models/{model}:generateContent")
     
     headers = {'x-goog-api-key': key}
     
-    # 修改2：构造一个最小化的 generateContent 请求体
+    # 构造一个 generateContent 请求体
     payload = {
         "contents": [{"parts": [{"text": "hi"}]}],
         "generationConfig": {
@@ -479,7 +478,7 @@ async def validate_gemini_key(client: httpx.AsyncClient, key: str, model: str) -
     try:
         response = await client.post(url, headers=headers, json=payload, timeout=15) # 适当增加超时
         
-        # 修改3：检查响应体中是否包含错误，因为即使是200也可能包含错误信息
+        # 检查响应体中是否包含错误
         if response.status_code == 200:
             try:
                 data = response.json()
@@ -526,10 +525,6 @@ async def batch_validate_keys(payload: BatchKeyIDs):
                 else:
                     await key_manager.record_failure(key_value, validation_model_name, status_code, message)
             
-            # 在批次之间短暂休息0.5秒，增加稳定性
-            if i + batch_size < len(keys_to_validate):
-                await asyncio.sleep(0.5)
-
     return None
 
 # --- 新增的配置管理路由 ---
