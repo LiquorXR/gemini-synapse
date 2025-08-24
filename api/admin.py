@@ -459,18 +459,41 @@ async def toggle_key_status(key_id: int):
 
 async def validate_gemini_key(client: httpx.AsyncClient, key: str, model: str) -> tuple[bool, int, str]:
     """
-    使用 httpx 向 Gemini API 发送请求以验证密钥。
+    使用 httpx 向 Gemini API 发送一个低成本的 generateContent 请求来严格验证密钥。
     返回 (is_valid, status_code, message)
     """
-    url = await build_upstream_url(f"models/{model}:countTokens")
-    params = {"key": key}
-    payload = {"contents": [{"parts": [{"text": "hello"}]}]}
+    # 修改1：目标 URL 变为 generateContent
+    url = await build_upstream_url(f"models/{model}:generateContent")
+    
+    headers = {'x-goog-api-key': key}
+    
+    # 修改2：构造一个最小化的 generateContent 请求体
+    payload = {
+        "contents": [{"parts": [{"text": "hi"}]}],
+        "generationConfig": {
+            "maxOutputTokens": 1,
+            "temperature": 0.0,
+        }
+    }
+    
     try:
-        response = await client.post(url, params=params, json=payload, timeout=10)
-        if response.status_code == 200:
-            return True, 200, "Validation successful"
+        response = await client.post(url, headers=headers, json=payload, timeout=15) # 适当增加超时
         
+        # 修改3：检查响应体中是否包含错误，因为即使是200也可能包含错误信息
+        if response.status_code == 200:
+            try:
+                data = response.json()
+                if "error" in data:
+                    # 如果JSON体中包含error字段，则判定为失败
+                    error_message = data["error"].get("message", response.text)
+                    return False, response.status_code, error_message
+                return True, 200, "Validation successful"
+            except Exception:
+                # JSON解析失败也算作错误
+                return False, response.status_code, "Invalid JSON response from upstream"
+
         return False, response.status_code, response.text
+        
     except httpx.TimeoutException:
         return False, 408, "Request timed out"
     except httpx.RequestError as e:
@@ -483,7 +506,7 @@ async def batch_validate_keys(payload: BatchKeyIDs):
         return
 
     batch_size = 10
-    validation_model_name = await config_manager.get_config("VALIDATION_MODEL") or "gemini-2.5-flash-lite-preview-06-17"
+    validation_model_name = await config_manager.get_config("VALIDATION_MODEL") or "gemini-2.5-flash-lite"
 
     async with aiosqlite.connect(DATABASE_URL) as db:
         placeholders = ','.join('?' for _ in payload.key_ids)
