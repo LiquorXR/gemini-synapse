@@ -137,15 +137,7 @@ class KeyManager:
                     if not rows:
                         return
 
-                    key_ids = [row[0] for row in rows]
                     keys = [row[1] for row in rows]
-
-                    placeholders = ','.join('?' for _ in key_ids)
-                    await db.execute(f"""
-                        UPDATE api_keys
-                        SET last_used = CURRENT_TIMESTAMP
-                        WHERE id IN ({placeholders})
-                    """, tuple(key_ids))
                     await db.commit()
 
                     for key in keys:
@@ -237,10 +229,16 @@ class KeyManager:
 
                     # 2. 更新密钥状态
                     if new_failures >= max_failure_count:
-                        await db.execute("UPDATE api_keys SET is_valid = 0, failure_count = ? WHERE id = ?", (new_failures, key_id))
+                        await db.execute(
+                            "UPDATE api_keys SET is_valid = 0, failure_count = ?, last_used = CURRENT_TIMESTAMP WHERE id = ?",
+                            (new_failures, key_id)
+                        )
                         logging.warning(f"Key ...{key[-4:]} (ID: {key_id}) has been invalidated after {new_failures} failures.")
                     else:
-                        await db.execute("UPDATE api_keys SET failure_count = ? WHERE id = ?", (new_failures, key_id))
+                        await db.execute(
+                            "UPDATE api_keys SET failure_count = ?, last_used = CURRENT_TIMESTAMP WHERE id = ?",
+                            (new_failures, key_id)
+                        )
                         logging.info(f"Recorded failure {new_failures}/{max_failure_count} for key ...{key[-4:]} (ID: {key_id}).")
 
                     # 3. 插入错误日志
@@ -290,15 +288,18 @@ class KeyManager:
 
     async def record_success(self, key: str, model_name: str | None):
         """
-        在密钥成功使用后，重置其失败计数，记录模型调用历史，并更新月度统计。
+        在密钥成功使用后，重置其失败计数，更新其最后使用时间，记录模型调用历史，并更新月度统计。
         """
         import datetime
 
         async with self.db_write_lock:
             async with aiosqlite.connect(self.db_url) as db:
                 async with db.execute("BEGIN"):
-                    # 1. 重置失败计数
-                    await db.execute("UPDATE api_keys SET is_valid = 1, failure_count = 0 WHERE key = ?", (key,))
+                    # 1. 重置失败计数并更新时间戳
+                    await db.execute(
+                        "UPDATE api_keys SET is_valid = 1, failure_count = 0, last_used = CURRENT_TIMESTAMP WHERE key = ?",
+                        (key,)
+                    )
                     
                     # 2. 记录详细调用历史 (仅当模型名称存在时)
                     if model_name:
@@ -325,6 +326,10 @@ async def initialize_database():
     logging.info("Initializing database...")
     async with aiosqlite.connect(DATABASE_URL) as db:
         await db.execute("PRAGMA journal_mode=WAL;")
+        await db.execute("PRAGMA synchronous = NORMAL;")
+        await db.execute("PRAGMA cache_size = -4096;")
+        await db.execute("PRAGMA temp_store = MEMORY;")
+        await db.execute("PRAGMA busy_timeout = 5000;")
         await db.execute("""
             CREATE TABLE IF NOT EXISTS api_keys (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
