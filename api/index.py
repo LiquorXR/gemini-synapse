@@ -242,7 +242,7 @@ class ProxyService:
                 last_exception = httpx.HTTPStatusError(f"Status {r.status_code}: {error_message}", request=req, response=r)
                 
                 # 立即记录每一次失败的尝试
-                await key_manager.log_request_failure(key, model_name, r.status_code, error_message)
+                # await key_manager.log_request_failure(key, model_name, r.status_code, error_message)
 
                 # 如果是明确的、不可重试的客户端错误，立即向上抛出，终止此密钥的所有重试
                 # 403 (权限) 和 429 (速率限制) 错误应立即触发密钥轮换，而不是在同一个密钥上重试
