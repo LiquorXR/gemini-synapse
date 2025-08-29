@@ -230,13 +230,13 @@ class KeyManager:
                     # 2. 更新密钥状态
                     if new_failures >= max_failure_count:
                         await db.execute(
-                            "UPDATE api_keys SET is_valid = 0, failure_count = ?, last_used = CURRENT_TIMESTAMP WHERE id = ?",
+                            "UPDATE api_keys SET is_valid = 0, failure_count = ? WHERE id = ?",
                             (new_failures, key_id)
                         )
                         logging.warning(f"Key ...{key[-4:]} (ID: {key_id}) has been invalidated after {new_failures} failures.")
                     else:
                         await db.execute(
-                            "UPDATE api_keys SET failure_count = ?, last_used = CURRENT_TIMESTAMP WHERE id = ?",
+                            "UPDATE api_keys SET failure_count = ? WHERE id = ?",
                             (new_failures, key_id)
                         )
                         logging.info(f"Recorded failure {new_failures}/{max_failure_count} for key ...{key[-4:]} (ID: {key_id}).")
