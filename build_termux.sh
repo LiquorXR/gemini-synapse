@@ -8,7 +8,7 @@ set -e
 echo "--- [1/4] 更新 Termux 软件包并安装依赖 ---"
 # 使用 Termux 的包管理器 pkg
 pkg update -y
-pkg install -y rustc python python-pip
+pkg install -y rust python python-pip
 
 echo "--- [2/4] 安装 Python 依赖库 ---"
 pip install -r requirements.txt
