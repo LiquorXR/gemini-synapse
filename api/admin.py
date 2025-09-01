@@ -180,9 +180,9 @@ async def get_admin_stats_internal():
         key_stats = KeyStats(total_keys=total, valid_keys=valid, invalid_keys=total - valid)
 
         # Call Stats
-        now = datetime.datetime.utcnow()
-        # 月度统计需要基于上海时区
-        current_month_str = datetime.datetime.now(ZoneInfo("Asia/Shanghai")).strftime('%Y-%m')
+        # 统一使用上海时区作为所有统计的基准时间，以确保数据一致性
+        now = datetime.datetime.now(ZoneInfo("Asia/Shanghai"))
+        current_month_str = now.strftime('%Y-%m')
 
         # 1. 获取本月调用次数 (从新的聚合表)
         cursor = await db.execute("SELECT call_count FROM monthly_stats WHERE year_month = ?", (current_month_str,))
@@ -197,10 +197,12 @@ async def get_admin_stats_internal():
                 (SELECT COUNT(*) FROM api_call_history WHERE timestamp > ?),
                 (SELECT COUNT(*) FROM api_call_history WHERE timestamp > ?)
         """
+        # 将带时区的 datetime 对象转换为 UTC 时间戳字符串，以便与数据库中的 UTC 时间进行比较
+        utc_now = now.astimezone(datetime.timezone.utc)
         params = (
-            now - datetime.timedelta(minutes=1),
-            now - datetime.timedelta(hours=1),
-            now - datetime.timedelta(days=1)
+            utc_now - datetime.timedelta(minutes=1),
+            utc_now - datetime.timedelta(hours=1),
+            utc_now - datetime.timedelta(days=1)
         )
         cursor = await db.execute(query, params)
         last_minute, last_hour, last_24_hours = await cursor.fetchone()
@@ -272,7 +274,7 @@ async def reveal_keys(payload: BatchKeyIDs):
 @router.get("/keys/{key_id}/details", response_model=List[ModelCallDetail])
 async def get_key_call_details(key_id: int):
     """获取单个密钥在过去24小时内按模型分组的总调用详情"""
-    day_ago = datetime.datetime.utcnow() - datetime.timedelta(days=1)
+    day_ago = (datetime.datetime.now(ZoneInfo("Asia/Shanghai")) - datetime.timedelta(days=1)).astimezone(datetime.timezone.utc)
     
     async with aiosqlite.connect(DATABASE_URL) as db:
         cursor = await db.execute(
@@ -298,7 +300,8 @@ async def get_key_call_details(key_id: int):
 
 async def get_stats_trend_internal(days: int) -> TrendData:
     """内部函数：获取指定天数范围内的 API 调用趋势数据，按模型分组"""
-    end_time_utc = datetime.datetime.utcnow()
+    end_time_shanghai = datetime.datetime.now(ZoneInfo("Asia/Shanghai"))
+    end_time_utc = end_time_shanghai.astimezone(datetime.timezone.utc)
     
     if days == 1:
         start_time_utc = end_time_utc - datetime.timedelta(days=1)
@@ -341,7 +344,6 @@ async def get_stats_trend_internal(days: int) -> TrendData:
     final_datasets = {model: [] for model in all_models}
     
     # Generate labels based on Shanghai time
-    end_time_shanghai = end_time_utc + datetime.timedelta(hours=8)
 
     for i in range(range_count - 1, -1, -1):
         if time_unit == 'hours':

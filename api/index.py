@@ -6,6 +6,7 @@ import httpx
 import logging
 import asyncio
 import os
+import time
 from api.path_builder import build_upstream_url
 
 from api.database import key_manager, config_manager, initialize_database
@@ -22,12 +23,23 @@ import mimetypes
 # 我们在此显式地将其注册为 application/javascript，以修复前端模块加载问题
 mimetypes.add_type("application/javascript", ".js")
 
-# --- 日志配置 ---
+# --- 日志配置 (统一使用 UTC) ---
+# 创建一个自定义的 Formatter，它将所有日志时间转换为 UTC
+class UTCFormatter(logging.Formatter):
+    converter = time.gmtime
+
+# 配置日志记录器
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    format='%(asctime)s.%(msecs)03dZ - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%dT%H:%M:%S'
 )
+
+# 将 UTC Formatter 应用到根 logger
+logging.getLogger().handlers[0].setFormatter(UTCFormatter(
+    fmt='%(asctime)s.%(msecs)03dZ - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%dT%H:%M:%S'
+))
 logger = logging.getLogger(__name__)
 
 # --- 全局变量 ---
