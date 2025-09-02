@@ -39,25 +39,15 @@ if __name__ == '__main__':
     # 定义 .env 文件的最终路径
     dotenv_path = os.path.join(application_path, '.env')
 
-    # --- DEBUG START ---
-    print("--- DEBUG: .env path that will be used ---")
-    print(f"dotenv_path = {dotenv_path}")
-    print("------------------------------------------")
-    # --- DEBUG END ---
-
     # 检查 .env 文件是否存在于可执行文件旁边
     if not os.path.exists(dotenv_path):
-        print(f"--- DEBUG: .env file not found at '{dotenv_path}', attempting to create it.")
         try:
             # 如果 .env 文件不存在，则使用硬编码的默认内容创建它
             with open(dotenv_path, 'w', encoding='utf-8') as f:
                 f.write(DEFAULT_ENV_CONTENT)
-            print("--- DEBUG: .env file created successfully. ---")
-        except Exception as e:
-            # 如果创建失败，则打印错误信息
-            print("--- DEBUG: FAILED to create .env file! ---")
-            print(f"Error: {e}")
-            print("-------------------------------------------")
+        except Exception:
+            # 如果创建失败，则静默处理，让后续流程处理缺失的环境变量
+            pass
 
     # 从最终确定的路径加载 .env 文件（无论是已存在的还是新创建的）
     load_dotenv(dotenv_path=dotenv_path)
