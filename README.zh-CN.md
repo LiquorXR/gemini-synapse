@@ -46,8 +46,8 @@
     ```
 
 3.  **访问服务**:
-    -   API 代理服务运行在: `http://localhost:8000`
-    -   Web 管理面板位于: `http://localhost:8000` (直接访问根路径)
+    -   API 代理服务运行在: `http://localhost:8008`
+    -   Web 管理面板位于: `http://localhost:8008` (直接访问根路径)
 
 #### 方法 B: 手动构建和运行 Docker 镜像
 
@@ -66,16 +66,16 @@
     使用以下命令启动容器。
     -   **对于 Linux / macOS / PowerShell:**
         ```bash
-        docker run -d -p 8000:8000 --name my-gemini-app --env-file .env -v "$(pwd)/data.db:/app/data.db" gemini-synapse
+        docker run -d -p 8008:8008 --name my-gemini-app --env-file .env -v "$(pwd)/data.db:/app/data.db" gemini-synapse
         ```
     -   **对于 Windows (CMD):**
         ```bash
-        docker run -d -p 8000:8000 --name my-gemini-app --env-file .env -v "%cd%\\data.db:/app/data.db" gemini-synapse
+        docker run -d -p 8008:8008 --name my-gemini-app --env-file .env -v "%cd%\\data.db:/app/data.db" gemini-synapse
         ```
     
     **参数说明:**
     - `-d`: 后台运行
-    - `-p 8000:8000`: 端口映射 (主机:容器)
+    - `-p 8008:8008`: 端口映射 (主机:容器)
     - `--name my-gemini-app`: 为容器命名
     - `--env-file .env`: 将 `.env` 文件中的环境变量加载到容器中
     - `-v ...`: **(重要)** 将本地的 `data.db` 文件挂载到容器中，以实现数据持久化。
@@ -102,7 +102,7 @@
 
 4.  **启动服务**:
     ```bash
-    uvicorn api.index:app --host 0.0.0.0 --port 8000
+    uvicorn api.index:app --host 0.0.0.0 --port 8008
     ```
 
 ## ⚙️ 配置说明
@@ -128,7 +128,7 @@
 
 ### 1. 登录 Web 管理面板
 
--   打开浏览器，访问 `http://<你的服务器IP>:8000`。
+-   打开浏览器，访问 `http://<你的服务器IP>:8008`。
 -   输入你在 `.env` 中设置的 `ADMIN_KEY` 进行登录。
 -   在面板中，你可以管理所有 Gemini API 密钥、访问密钥和系统配置。
 
@@ -136,7 +136,7 @@
 
 将你的第三方客户端或应用配置为使用本代理服务：
 
--   **API 端点 / Base URL**: `http://<你的服务器IP>:8000`
+-   **API 端点 / Base URL**: `http://<你的服务器IP>:8008`
 -   **API 密钥**: 填入你在 `.env` 或 Web 面板中设置的 `ACCESS_KEY` 之一。
 
 请求将自动通过代理转发至 Gemini API，并享受密钥负载均衡、失败重试等所有高级功能。
@@ -190,7 +190,7 @@ chmod +x cloudflared
 1.  回到浏览器中的 Cloudflare Tunnels 控制台。你应该能看到刚刚创建的隧道状态为 **"Connected"**。
 2.  点击你的隧道名称，然后切换到 **Public Hostname** 标签页。
 3.  点击 **Add a public hostname**。
-4.  在 **Service** 部分，将 **Type** 设置为 `HTTP`，并将 **URL** 设置为 `localhost:8000` (这是 Gemini Synapse 服务的地址)。
+4.  在 **Service** 部分，将 **Type** 设置为 `HTTP`，并将 **URL** 设置为 `localhost:8008` (这是 Gemini Synapse 服务的地址)。
 5.  点击 **Save hostname**。
 
 完成！Cloudflare 会自动为你分配一个 `.trycloudflare.com` 的域名（或使用你自己的域名），并将其指向你在本地运行的服务。现在，你可以通过这个公网地址访问你的应用了。为了让它在后台稳定运行，建议配合 `tmux` 或 `screen` 等工具使用。

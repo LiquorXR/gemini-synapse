@@ -7,7 +7,7 @@ services:
     container_name: gemini-synapse-app
     
     ports:
-      - "8000:8000"
+      - "8008:8008"
 
     volumes:
       - ./data:/app/data

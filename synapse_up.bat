@@ -18,10 +18,10 @@ if not defined EDGE_PATH (
 
 REM ======== 配置 PWA 应用参数 ========
 SET "PWA_PROFILE_PATH=%TEMP%\GeminiSynapseProfile"
-SET "PWA_CMD="%EDGE_PATH%" --user-data-dir="%PWA_PROFILE_PATH%" --app=http://127.0.0.1:8000/ --window-size=460,910 --user-agent="Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1""
+SET "PWA_CMD="%EDGE_PATH%" --user-data-dir="%PWA_PROFILE_PATH%" --app=http://127.0.0.1:8008/ --window-size=460,910 --user-agent="Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1""
 
 REM ======== 启动 Uvicorn 服务器 ========
-start "Gemini Synapse" /B uvicorn api.index:app --host 0.0.0.0 --port 8000
+start "Gemini Synapse" /B uvicorn api.index:app --host 0.0.0.0 --port 8008
 
 REM ======== 等待服务器启动 ========
 echo 正在启动服务器...

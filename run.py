@@ -3,6 +3,8 @@ import os
 import sys
 from dotenv import load_dotenv
 
+from colorama import init
+
 # --- 处理打包后的路径问题 ---
 # 当程序被 PyInstaller 打包后，它的资源文件（如 .env, frontend/）会被放在一个临时目录中。
 # 这个函数帮助我们在开发环境和打包后的环境中都能正确找到文件。
@@ -17,6 +19,10 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 if __name__ == '__main__':
+    # --- 初始化 colorama ---
+    # 这允许在 Windows 的 cmd.exe 中显示带颜色的输出
+    init(autoreset=True)
+
     # --- 加载环境变量 ---
     # 我们需要告诉脚本去哪里找 .env 文件。
     # resource_path('.') 会指向打包后的根目录或当前目录。

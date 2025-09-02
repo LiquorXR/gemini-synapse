@@ -46,8 +46,8 @@
     ```
 
 3.  **Access the Service**:
-    -   The API proxy service runs at: `http://localhost:8000`
-    -   The Web Admin Panel is at: `http://localhost:8000` (access the root path)
+    -   The API proxy service runs at: `http://localhost:8008`
+    -   The Web Admin Panel is at: `http://localhost:8008` (access the root path)
 
 #### Method B: Manually Building and Running the Docker Image
 
@@ -66,16 +66,16 @@ If you prefer not to use `docker-compose`, you can follow these manual steps.
     Use the following command to start the container.
     -   **For Linux / macOS / PowerShell:**
         ```bash
-        docker run -d -p 8000:8000 --name my-gemini-app --env-file .env -v "$(pwd)/data.db:/app/data.db" gemini-synapse
+        docker run -d -p 8008:8008 --name my-gemini-app --env-file .env -v "$(pwd)/data.db:/app/data.db" gemini-synapse
         ```
     -   **For Windows (CMD):**
         ```bash
-        docker run -d -p 8000:8000 --name my-gemini-app --env-file .env -v "%cd%\\data.db:/app/data.db" gemini-synapse
+        docker run -d -p 8008:8008 --name my-gemini-app --env-file .env -v "%cd%\\data.db:/app/data.db" gemini-synapse
         ```
 
     **Argument Explanation:**
     - `-d`: Run in detached mode
-    - `-p 8000:8000`: Port mapping (host:container)
+    - `-p 8008:8008`: Port mapping (host:container)
     - `--name my-gemini-app`: Name the container
     - `--env-file .env`: Load environment variables from the `.env` file into the container
     - `-v ...`: **(Important)** Mount the local `data.db` file into the container for data persistence.
@@ -102,7 +102,7 @@ If you prefer not to use `docker-compose`, you can follow these manual steps.
 
 4.  **Start the service**:
     ```bash
-    uvicorn api.index:app --host 0.0.0.0 --port 8000
+    uvicorn api.index:app --host 0.0.0.0 --port 8008
     ```
 
 ## ⚙️ Configuration
@@ -128,7 +128,7 @@ Configure the service by editing the `.env` file. **Please note**: Many configur
 
 ### 1. Log in to the Web Admin Panel
 
--   Open your browser and navigate to `http://<your-server-ip>:8000`.
+-   Open your browser and navigate to `http://<your-server-ip>:8008`.
 -   Enter the `ADMIN_KEY` you set in your `.env` file to log in.
 -   In the panel, you can manage all your Gemini API keys, access keys, and system configurations.
 
@@ -136,7 +136,7 @@ Configure the service by editing the `.env` file. **Please note**: Many configur
 
 Configure your third-party clients or applications to use this proxy service:
 
--   **API Endpoint / Base URL**: `http://<your-server-ip>:8000`
+-   **API Endpoint / Base URL**: `http://<your-server-ip>:8008`
 -   **API Key**: Use one of the `ACCESS_KEY`s you set in the `.env` file or the web panel.
 
 Requests will be automatically forwarded to the Gemini API through the proxy, enjoying all advanced features like key load balancing, failure retries, and more.
@@ -190,7 +190,7 @@ At this point, a secure connection between your device and Cloudflare has been e
 1.  Go back to the Cloudflare Tunnels dashboard in your browser. You should see your newly created tunnel with a **"Connected"** status.
 2.  Click on your tunnel's name, then switch to the **Public Hostname** tab.
 3.  Click **Add a public hostname**.
-4.  In the **Service** section, set the **Type** to `HTTP` and the **URL** to `localhost:8000` (the address of your Gemini Synapse service).
+4.  In the **Service** section, set the **Type** to `HTTP` and the **URL** to `localhost:8008` (the address of your Gemini Synapse service).
 5.  Click **Save hostname**.
 
 Done! Cloudflare will automatically assign you a `.trycloudflare.com` domain (or you can use your own) and point it to your locally running service. You can now access your application via this public address. For stable background operation, it is recommended to use it with tools like `tmux` or `screen`.
