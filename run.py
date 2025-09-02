@@ -32,14 +32,9 @@ if __name__ == '__main__':
     init(autoreset=True)
 
     # --- 环境变量和配置文件管理 ---
-    # 确定应用程序的根目录。在开发模式下，它是项目文件夹；
-    # 在打包后（通过 PyInstaller），它是可执行文件所在的文件夹。
-    if getattr(sys, 'frozen', False):
-        # 如果程序是被打包的
-        application_path = os.path.dirname(sys.executable)
-    else:
-        # 如果是在开发环境中运行
-        application_path = os.path.abspath(".")
+    # 将当前工作目录作为应用的根目录。
+    # 启动脚本 (bat/sh) 应确保在运行此程序前已切换到正确的目录下。
+    application_path = os.path.abspath(".")
 
     # 定义 .env 文件的最终路径
     dotenv_path = os.path.join(application_path, '.env')
