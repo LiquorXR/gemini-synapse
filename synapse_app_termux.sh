@@ -1,5 +1,4 @@
 #!/bin/bash
-# curl -sS -O https://raw.githubusercontent.com/LiquorXR/gemini-synapse/main/deploy_termux_binary.sh && chmod +x deploy_termux_binary.sh && ./deploy_termux_binary.sh
 # ==============================================================================
 # Gemini Synapse - Termux (Binary Deployment)
 # ==============================================================================
@@ -25,17 +24,23 @@ setup_colors() {
   fi
 }
 
+# --- 全局变量 ---
+APP_DIR="synapse_app"
+BINARY_NAME="synapse_termux"
+BINARY_PATH="${APP_DIR}/${BINARY_NAME}"
+
 # --- 核心功能函数 ---
 download_binary() {
-  echo -e "\n${BLUE}正在下载最新的可执行文件...${NC}"
+  echo -e "\n${BLUE}正在下载最新的可执行文件到 '${APP_DIR}'...${NC}"
+  mkdir -p "${APP_DIR}" # 确保目录存在
   local download_url="https://github.com/LiquorXR/gemini-synapse/releases/download/app/synapse_termux"
   
   # 使用 curl 下载文件
   if command -v curl &>/dev/null; then
-    curl -L -o synapse_termux "$download_url"
+    curl -L -o "${BINARY_PATH}" "$download_url"
   # 如果 curl 不可用，尝试使用 wget
   elif command -v wget &>/dev/null; then
-    wget -O synapse_termux "$download_url"
+    wget -O "${BINARY_PATH}" "$download_url"
   else
     echo -e "${RED}错误: curl 和 wget 都未安装。无法下载文件。${NC}"
     exit 1
@@ -43,13 +48,13 @@ download_binary() {
   
   echo -e "${GREEN}下载完成。${NC}"
   echo -e "${BLUE}正在授予执行权限...${NC}"
-  chmod +x synapse_termux
+  chmod +x "${BINARY_PATH}"
   echo -e "${GREEN}权限授予完成。${NC}"
 }
 
 start_service() {
-  if [ ! -f "synapse_termux" ]; then
-      echo -e "${RED}错误: 未找到 'synapse_termux' 可执行文件。${NC}"
+  if [ ! -f "${BINARY_PATH}" ]; then
+      echo -e "${RED}错误: 未找到 '${BINARY_PATH}' 可执行文件。${NC}"
       read -p "是否立即下载? (Y/n): " confirm < /dev/tty
       if [[ "$confirm" == "y" || "$confirm" == "Y" || "$confirm" == "" ]]; then
           download_binary
@@ -76,8 +81,8 @@ start_service() {
   echo -e "  - ${BOLD}Web 管理面板:${NC} http://127.0.0.1:${port}"
   echo -e "\n${YELLOW}按 ${BOLD}Ctrl+C${NC} 组合键来停止服务。${NC}\n"
 
-  # 传递端口号给可执行文件
-  ./synapse_termux --port ${port}
+  # 切换到应用目录并执行，以确保它能找到 .env 和 data.db
+  (cd "${APP_DIR}" && ./"${BINARY_NAME}" --port "${port}")
 }
 
 # --- 主菜单 ---
@@ -132,9 +137,12 @@ show_main_menu() {
 main() {
   setup_colors
 
+  # 确保应用目录存在
+  mkdir -p "${APP_DIR}"
+
   # 检查可执行文件是否存在
-  if [ ! -f "synapse_termux" ]; then
-    echo -e "${YELLOW}未找到 'synapse_termux' 可执行文件。${NC}"
+  if [ ! -f "${BINARY_PATH}" ]; then
+    echo -e "${YELLOW}未找到 '${BINARY_PATH}' 可执行文件。${NC}"
     read -p "是否立即下载? (Y/n): " confirm
     if [[ "$confirm" == "y" || "$confirm" == "Y" || "$confirm" == "" ]]; then
       download_binary

@@ -29,3 +29,5 @@ timeout /t 5 /nobreak > nul
 
 REM ======== 启动 PWA 应用 ========
 start "Gemini Synapse PWA" %PWA_CMD%
+
+exit /b 0

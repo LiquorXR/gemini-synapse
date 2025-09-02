@@ -8,7 +8,7 @@ set -e
 echo "--- [1/4] 更新 Termux 软件包并安装依赖 ---"
 # 使用 Termux 的包管理器 pkg
 pkg update -y
-pkg install -y rust python python-pip
+pkg install -y rust python python-pip ldd binutils
 
 echo "--- [2/4] 安装 Python 依赖库 ---"
 pip install -r requirements.txt
@@ -23,8 +23,6 @@ pyinstaller --name synapse_termux \
             --onefile \
             --add-data "api:api" \
             --add-data "frontend:frontend" \
-            --add-data ".env:.env" \
-            --add-data ".env.example:.env.example" \
             --hidden-import "fastapi" \
             --hidden-import "httpx" \
             --hidden-import "aiosqlite" \
@@ -37,6 +35,6 @@ pyinstaller --name synapse_termux \
             run.py
 
 echo "--- 打包完成！ ---"
-echo "可执行文件位于: dist/synapse"
-echo "您可以将 dist/synapse 文件复制到其他兼容的 aarch64 Linux 环境中运行。"
-echo "如果无法运行，请先给予文件执行权限: chmod +x dist/synapse"
+echo "可执行文件位于: dist/synapse_termux"
+echo "您可以将 dist/synapse_termux 文件复制到其他兼容的 aarch64 Linux 环境中运行。"
+echo "如果无法运行，请先给予文件执行权限: chmod +x dist/synapse_termux"
