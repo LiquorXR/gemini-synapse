@@ -111,10 +111,10 @@ main {
 .pagination span { margin: 0 0.5rem; }
 .key-partial { font-family: monospace; }
 .actions { display: flex; align-items: center; gap: 0.75rem; justify-content: flex-end; }
-.failure-chip { background-color: var(--failure-bg); color: var(--failure-color); padding: 0.2rem 0.5rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 600; }
+.failure-chip { background-color: var(--failure-bg); color: var(--failure-color); padding: 0.15rem 0.45rem; border-radius: 2rem; font-size: 0.7rem; font-weight: 600; }
 .failure-chip.zero { background-color: #f3f4f6; color: #6b7280; }
 [data-theme="dark"] .failure-chip.zero { background-color: #374151; color: #9ca3af; }
-.status-chip { padding: 0.2rem 0.5rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 600; }
+.status-chip { padding: 0.15rem 0.45rem; border-radius: 2rem; font-size: 0.7rem; font-weight: 600; }
 .status-chip.valid { background-color: var(--status-valid-bg); color: var(--status-valid-text); }
 .status-chip.invalid { background-color: var(--status-invalid-bg); color: var(--status-invalid-text); }
 #floating-bar { position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%); width: calc(100% - 2rem); max-width: 430px; background: var(--pico-card-background-color); border-radius: var(--pico-border-radius); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1); padding: 0.75rem; display: none; align-items: center; justify-content: space-between; gap: 0.5rem; z-index: 100; }
@@ -141,6 +141,14 @@ table tbody tr {
 @media (max-width: 576px) {
     .details-table th:first-child, .details-table td:first-child { width: 70%; }
     .details-table th:last-child, .details-table td:last-child { width: 30%; }
+}
+@media (min-width: 768px) {
+  #floating-bar {
+    max-width: 600px;
+  }
+  .page-size-selector {
+    width: 115px;
+  }
 }
 button:focus,
 input:focus,
