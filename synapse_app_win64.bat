@@ -64,6 +64,14 @@ goto :start_app
 :start_app
 echo %COLOR_INFO%准备启动服务...%COLOR_RESET%
 
+:: ======== 端口设置 ========
+set "port="
+set /p "port=请输入启动的端口号 (默认为 8008): "
+if not defined port (
+    set "port=8008"
+)
+echo.
+
 :: ======== 从注册表获取 Edge 路径 ========
 set "EDGE_PATH="
 for /f "skip=2 tokens=2,*" %%a in (
@@ -78,11 +86,12 @@ if not defined EDGE_PATH (
 
 :: ======== 配置 PWA 应用参数 ========
 SET "PWA_PROFILE_PATH=%TEMP%\GeminiSynapseProfile"
-SET "PWA_CMD="%EDGE_PATH%" --user-data-dir="%PWA_PROFILE_PATH%" --app=http://127.0.0.1:8008/ --window-size=460,910 --user-agent="Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1""
+SET "PWA_CMD="%EDGE_PATH%" --user-data-dir="%PWA_PROFILE_PATH%" --app=http://127.0.0.1:%port%/ --window-size=460,910 --user-agent="Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1""
 
 :: ======== 启动核心服务 ========
 echo %COLOR_INFO%正在后台启动核心服务...%COLOR_RESET%
 cd /d "%APP_DIR%"
+set "PORT=%port%"
 start "Gemini Synapse Core" /B %BINARY_NAME%
 
 :: ======== 等待服务器启动 ========

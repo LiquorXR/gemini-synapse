@@ -82,7 +82,7 @@ start_service() {
   echo -e "\n${YELLOW}按 ${BOLD}Ctrl+C${NC} 组合键来停止服务。${NC}\n"
 
   # 切换到应用目录并执行，以确保它能找到 .env 和 data.db
-  (cd "${APP_DIR}" && ./"${BINARY_NAME}" --port "${port}")
+  (cd "${APP_DIR}" && PORT="${port}" ./"${BINARY_NAME}")
 }
 
 # --- 主菜单 ---

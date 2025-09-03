@@ -61,7 +61,7 @@ if __name__ == '__main__':
     port = int(os.getenv("PORT", 8008))
 
     print(f"--- Gemini Synapse ---")
-    print(f"服务启动将监听在: {host}:{port}")
+    print(f"服务将监听在: {host}:{port}")
     
     # --- 启动 Uvicorn 服务 ---
     # "api.index:app" 指的是 api/index.py 文件中的 app 实例
