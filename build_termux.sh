@@ -21,7 +21,6 @@ echo "这个过程可能需要几分钟，请耐心等待..."
 
 pyinstaller --name synapse_termux \
             --onefile \
-            --noupx \
             --add-data "api:api" \
             --add-data "frontend:frontend" \
             --hidden-import "fastapi" \

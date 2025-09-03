@@ -45,9 +45,12 @@ if __name__ == '__main__':
             # 如果 .env 文件不存在，则使用硬编码的默认内容创建它
             with open(dotenv_path, 'w', encoding='utf-8') as f:
                 f.write(DEFAULT_ENV_CONTENT)
-        except Exception:
-            # 如果创建失败，则静默处理，让后续流程处理缺失的环境变量
-            pass
+        except Exception as e:
+            # 如果创建失败，打印错误并退出
+            print(f"错误：无法在以下路径创建 .env 文件: {dotenv_path}")
+            print(f"原因: {e}")
+            print("请检查程序是否在具有写入权限的目录中运行，然后重试。")
+            sys.exit(1)
 
     # 从最终确定的路径加载 .env 文件（无论是已存在的还是新创建的）
     load_dotenv(dotenv_path=dotenv_path)
