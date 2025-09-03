@@ -23,6 +23,8 @@ pyinstaller --name synapse_termux \
             --onefile \
             --add-data "api:api" \
             --add-data "frontend:frontend" \
+            --add-binary "$PREFIX/lib/libandroid-posix-semaphore.so:." \
+            --add-binary "$PREFIX/lib/libsqlite3.so:." \
             --hidden-import "fastapi" \
             --hidden-import "httpx" \
             --hidden-import "aiosqlite" \
