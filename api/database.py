@@ -249,19 +249,17 @@ class KeyManager:
                         )
                         logging.info(f"Logged error for key ID {key_id}: Status {status_code}")
 
-                    # 4. 记录调用历史 (与 record_success 相同)
+                    # 4. 记录调用历史和月度统计 (仅当模型名称存在时)
                     if model_name:
                         await db.execute(
                             "INSERT INTO api_call_history (key_id, model_name, identification_code) VALUES (?, ?, ?)",
                             (key_id, model_name, status_code)
                         )
-
-                    # 5. 更新月度统计 (与 record_success 相同)
-                    current_month = datetime.datetime.now(ZoneInfo("Asia/Shanghai")).strftime('%Y-%m')
-                    await db.execute("""
-                        INSERT INTO monthly_stats (year_month, call_count) VALUES (?, 1)
-                        ON CONFLICT(year_month) DO UPDATE SET call_count = call_count + 1
-                    """, (current_month,))
+                        current_month = datetime.datetime.now(ZoneInfo("Asia/Shanghai")).strftime('%Y-%m')
+                        await db.execute("""
+                            INSERT INTO monthly_stats (year_month, call_count) VALUES (?, 1)
+                            ON CONFLICT(year_month) DO UPDATE SET call_count = call_count + 1
+                        """, (current_month,))
 
                 await db.commit()
 
@@ -301,7 +299,7 @@ class KeyManager:
                         (key,)
                     )
                     
-                    # 2. 记录详细调用历史 (仅当模型名称存在时)
+                    # 2. 记录详细调用历史和月度统计 (仅当模型名称存在时)
                     if model_name:
                         cursor = await db.execute("SELECT id FROM api_keys WHERE key = ?", (key,))
                         row = await cursor.fetchone()
@@ -311,13 +309,11 @@ class KeyManager:
                                 "INSERT INTO api_call_history (key_id, model_name, identification_code) VALUES (?, ?, ?)",
                                 (key_id, model_name, 200)
                             )
-                    
-                    # 3. 更新月度统计计数器
-                    current_month = datetime.datetime.now(ZoneInfo("Asia/Shanghai")).strftime('%Y-%m')
-                    await db.execute("""
-                        INSERT INTO monthly_stats (year_month, call_count) VALUES (?, 1)
-                        ON CONFLICT(year_month) DO UPDATE SET call_count = call_count + 1
-                    """, (current_month,))
+                            current_month = datetime.datetime.now(ZoneInfo("Asia/Shanghai")).strftime('%Y-%m')
+                            await db.execute("""
+                                INSERT INTO monthly_stats (year_month, call_count) VALUES (?, 1)
+                                ON CONFLICT(year_month) DO UPDATE SET call_count = call_count + 1
+                            """, (current_month,))
 
                 await db.commit()
 
