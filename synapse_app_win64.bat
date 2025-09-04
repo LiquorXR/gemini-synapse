@@ -3,7 +3,7 @@ chcp 65001 > nul
 title Gemini Synapse Launcher
 
 :: ==============================================================================
-:: Gemini Synapse - Windows Launcher with Colors
+:: Gemini Synapse - Windows Launcher
 :: ==============================================================================
 
 :: --- 颜色定义 ---

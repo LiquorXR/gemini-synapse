@@ -102,7 +102,7 @@ show_main_menu() {
     echo -e "${GREEN}  ███████║   ██║   ██║ ╚████║██║  ██║██║      ███████║███████╗${NC}"
     echo -e "${GREEN}  ╚══════╝   ╚═╝   ╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝      ╚══════╝╚══════╝${NC}"
     echo -e "${BLUE}=========================================================${NC}"
-    echo -e "              ${BOLD}Binary Deployment for Termux${NC}"
+    echo -e "              ${BOLD}executable file for Termux${NC}"
     echo -e "${BLUE}=========================================================${NC}"
     echo -e "  ${BOLD}[1]${NC} ${GREEN}启动服务${NC}  --- 启动 Gemini Synapse 服务"
     echo -e "  ${BOLD}[2]${NC} ${BLUE}更新应用${NC}  --- 下载最新的可执行文件"
