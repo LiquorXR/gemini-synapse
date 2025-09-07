@@ -1,6 +1,31 @@
 @echo off
 chcp 65001 > nul
+setlocal enabledelayedexpansion
 title Gemini Synapse
+
+REM ======== 环境依赖检测 ========
+echo 正在检测环境依赖...
+
+REM --- 检查 uvicorn ---
+where uvicorn >nul 2>nul
+if %errorlevel% neq 0 (
+    echo [错误] 未找到 uvicorn 命令。请确保 Python 和 uvicorn 已正确安装并已添加到系统 PATH 环境变量中。
+    pause
+    exit /b 1
+)
+
+REM --- 检查 Python 依赖 ---
+for /f "delims=" %%p in (requirements.txt) do (
+    pip show %%p >nul 2>nul
+    if !errorlevel! neq 0 (
+        echo [错误] Python 依赖 '%%p' 未安装。
+        echo 请在项目根目录下运行以下命令安装所有依赖:
+        echo pip install -r requirements.txt
+        pause
+        exit /b 1
+    )
+)
+echo 环境依赖检测通过。
 
 REM ======== 从注册表获取 Edge 路径 ========
 set "EDGE_PATH="
